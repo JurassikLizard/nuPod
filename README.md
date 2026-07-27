@@ -1,3 +1,8 @@
+## nuPod
+
+A modern, spotify-capable, Wi-Fi and Bluetooth enabled MP3 iPod upgrade.
+
+```
 Main Menu
 ├── Music
 │   ├── Playlists
@@ -37,3 +42,4 @@ Main Menu
 │   ├── Main Menu
 │   └── Reset All Settings
 └── Now Playing (appears while music is playing)
+```

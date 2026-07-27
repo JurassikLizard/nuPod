@@ -1,0 +1,34 @@
+{
+  "canvas": { "width": 220, "height": 176 },
+  "window": { "width": 960, "height": 640 },
+  "assets_root": "assets",
+  "colors": {
+    "foreground": "000000",
+    "background": "FFFFFF",
+    "selector_start": "5C9AE7",
+    "selector_end": "3268D2",
+    "selector_text": "FFFFFF",
+    "secondary_text": "999999",
+    "statusbar_text": "000000"
+  },
+  "menu_viewport": { "x": 0, "y": 22, "w": 220, "h": 154 },
+  "statusbar": { "height": 22 },
+  "font": { "path": "assets/font/Chicago.ttf", "size": 10 },
+  "font_large": { "path": "assets/font/Chicago.ttf", "size": 24 },
+  "images": {
+    "backdrop":     { "path": "Backdrop.bmp" },
+    "aa_bottom":    { "path": "AA Bottom.bmp" },
+    "aa_left":      { "path": "AA Left.bmp" },
+    "aa_right":     { "path": "AA Right.bmp" },
+    "battery":      { "path": "Battery Icon.bmp", "frames": 25 },
+    "disk":         { "path": "Disk Access.bmp", "frames": 6 },
+    "hold":         { "path": "Hold Icon.bmp", "frames": 1 },
+    "playmode":     { "path": "Playmode Icon.bmp", "frames": 4 },
+    "repeat":       { "path": "Repeat Icon.bmp", "frames": 4 },
+    "shuffle":      { "path": "Shuffle Icon.bmp", "frames": 1 },
+    "vol_left":     { "path": "Volume Left.bmp" },
+    "vol_right":    { "path": "Volume Right.bmp" },
+    "progress_bar": { "path": "Progress Bar.bmp" },
+    "volume_bar":   { "path": "Volume Bar.bmp" }
+  }
+}

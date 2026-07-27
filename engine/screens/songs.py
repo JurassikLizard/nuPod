@@ -5,6 +5,7 @@ Shows a scrollable list of songs with scroll position indicator.
 """
 
 from . import Screen, ScrollEvent, ButtonPress, Button
+from hardware import audio
 import sdl2
 
 
@@ -42,7 +43,7 @@ class SongsScreen(Screen):
         self._selected = 0
         self._scroll_offset = 0
 
-    def handle_input(self, event, state):
+    def handle_input(self, event):
         if isinstance(event, ScrollEvent):
             if event.direction < 0:  # CCW = up
                 self._selected = max(0, self._selected - 1)
@@ -54,15 +55,15 @@ class SongsScreen(Screen):
                 return "back"
             if event.button == Button.CENTER:
                 # Play the selected song (stub)
-                state.title = self._songs[self._selected].lstrip("0123456789- ").strip()
-                state.artist = "Unknown Artist"
-                state.album = "Unknown Album"
-                state.elapsed_sec = 0.0
-                state.play_state = "PLAYING"
+                audio.set_title(self._songs[self._selected].lstrip("0123456789- ").strip())
+                audio.set_artist("Unknown Artist")
+                audio.set_album("Unknown Album")
+                audio.set_elapsed_sec(0.0)
+                audio.set_play_state("PLAYING")
             return True
         return False
 
-    def render(self, renderer, assets, state, theme, viewport):
+    def render(self, renderer, assets, theme, viewport):
         vx, vy, vw, vh = viewport
 
         # Background

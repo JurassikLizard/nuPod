@@ -2,8 +2,7 @@
 iPod Classic emulator — main entry point.
 
 Uses a hardware-abstraction layer where each subsystem is a module of
-getter/setter functions.  New code should import hardware modules directly;
-existing screens receive a ``PlayerState`` compatibility adapter.
+getter/setter functions.  All code imports hardware modules directly.
 """
 
 import os
@@ -32,8 +31,6 @@ from hardware import storage
 from hardware import settings
 from hardware import input as hwinput
 
-# Compatibility adapter (screens receive this)
-from hardware.state import PlayerState, update_stub_state
 
 THEME_DIR = os.path.join(os.path.dirname(__file__), "theme")
 
@@ -47,7 +44,7 @@ def hex_rgb(h):
     return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
 
 
-def render_status_bar(renderer, assets, state, theme):
+def render_status_bar(renderer, assets, theme):
     """Draw the iPod classic status bar: time (center), battery (right),
     playmode/disk (left), hold (left)."""
     sb = theme.get("statusbar", {})
@@ -156,9 +153,6 @@ def main():
     vp = theme["menu_viewport"]
     vp_tuple = (vp["x"], vp["y"], vp["w"], vp["h"])
 
-    # PlayerState is a compatibility adapter that delegates to the
-    # functional hardware modules.  Screens receive this object.
-    state = PlayerState()
     input_stub = KeyboardInputStub()
 
     running = [True]
@@ -169,10 +163,10 @@ def main():
     def close_menu_and_open_screen(screen_cls):
         """Go to root menu and push a screen."""
         menu.go_to_root()
-        screen_manager.open(screen_cls, state)
+        screen_manager.open(screen_cls)
 
     menu = MenuController(
-        build_main_menu(state, close_menu_fn=lambda: menu.go_to_root()),
+        build_main_menu(close_menu_fn=lambda: menu.go_to_root()),
         root_title="Main Menu",
     )
 
@@ -197,10 +191,10 @@ def main():
 
             # ── Screen is active → delegate to screen ───────────────────
             if screen_manager.active:
-                consumed = screen_manager.handle_input(inp, state)
+                consumed = screen_manager.handle_input(inp)
                 # UP (Menu) button closes the screen if not consumed by the screen
                 if isinstance(inp, ButtonPress) and inp.button == Button.UP and not consumed:
-                    screen_manager.close(state)
+                    screen_manager.close()
                 continue
 
             # ── Menu is active → handle input ────────────────────────────
@@ -251,7 +245,15 @@ def main():
                 menu.handle(inp)
 
         # Update all hardware stubs
-        update_stub_state(state, dt)
+        battery.tick_stub(dt)
+        hwclock.tick_stub(dt)
+        disk.tick_stub(dt)
+        audio.tick_stub(dt)
+        display.tick_stub(dt)
+        storage.tick_stub(dt)
+        volume.tick_stub(dt)
+        settings.tick_stub(dt)
+        hwinput.tick_stub(dt)
 
         # Render
         sdl2.SDL_SetRenderDrawColor(renderer, *bg_rgb, 255)
@@ -259,10 +261,10 @@ def main():
 
         if screen_manager.active:
             # Full-screen view (no menu)
-            screen_manager.render(renderer, assets, state, theme, (0, 0, cw, ch))
+            screen_manager.render(renderer, assets, theme, (0, 0, cw, ch))
         else:
             # Status bar always visible when menu is showing
-            render_status_bar(renderer, assets, state, theme)
+            render_status_bar(renderer, assets, theme)
             # Menu overlay in viewport
             menu_renderer = MenuRenderer(renderer, assets, menu_style, vp_tuple)
             menu_renderer.render(menu)

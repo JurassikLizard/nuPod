@@ -7,6 +7,7 @@ in that playlist, and selecting a song starts playback.
 
 from . import Screen, ScrollEvent, ButtonPress, Button
 from .songs import STUB_SONGS
+from hardware import audio
 import sdl2
 
 
@@ -34,7 +35,7 @@ class PlaylistsScreen(Screen):
         self._selected = 0
         self._scroll_offset = 0
 
-    def handle_input(self, event, state):
+    def handle_input(self, event):
         if isinstance(event, ScrollEvent):
             items = self._stack[-1]["songs"] if self._stack else self._playlists
             if event.direction < 0:  # CCW = up
@@ -63,15 +64,15 @@ class PlaylistsScreen(Screen):
                 else:
                     _, song_name = self._stack[-1]["songs"][self._selected]
                     display = song_name.split(" - ", 1)[1] if " - " in song_name else song_name
-                    state.title = display
-                    state.artist = "Unknown Artist"
-                    state.album = "Unknown Album"
-                    state.elapsed_sec = 0.0
-                    state.play_state = "PLAYING"
+                    audio.set_title(display)
+                    audio.set_artist("Unknown Artist")
+                    audio.set_album("Unknown Album")
+                    audio.set_elapsed_sec(0.0)
+                    audio.set_play_state("PLAYING")
             return True
         return False
 
-    def render(self, renderer, assets, state, theme, viewport):
+    def render(self, renderer, assets, theme, viewport):
         vx, vy, vw, vh = viewport
         bg = self._hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))
         sdl2.SDL_SetRenderDrawColor(renderer, *bg, 255)

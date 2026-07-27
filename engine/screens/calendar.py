@@ -23,7 +23,7 @@ class CalendarScreen(Screen):
         self._selected = 0
         self._day_offset = 0
 
-    def handle_input(self, event, state):
+    def handle_input(self, event):
         if isinstance(event, ButtonPress):
             btn = event.button
             if btn == Button.UP:
@@ -51,7 +51,7 @@ class CalendarScreen(Screen):
             return day
         return None
 
-    def render(self, renderer, assets, state, theme, viewport):
+    def render(self, renderer, assets, theme, viewport):
         vx, vy, vw, vh = viewport
         bg = self._hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))
         sdl2.SDL_SetRenderDrawColor(renderer, *bg, 255)

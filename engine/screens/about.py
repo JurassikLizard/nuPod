@@ -5,18 +5,19 @@ and song count in a simple info layout.
 """
 
 from . import Screen, ButtonPress, Button
+from hardware import storage
 import sdl2
 
 
 class AboutScreen(Screen):
     """Settings > About: device information."""
 
-    def handle_input(self, event, state):
+    def handle_input(self, event):
         if isinstance(event, ButtonPress) and event.button == Button.UP:
             return "back"
         return False
 
-    def render(self, renderer, assets, state, theme, viewport):
+    def render(self, renderer, assets, theme, viewport):
         vx, vy, vw, vh = viewport
 
         # Background
@@ -31,13 +32,13 @@ class AboutScreen(Screen):
         lines = [
             ("About", title_color, True),
             ("", None, False),
-            (f"Model: {state.model_name}", text_color, False),
-            (f"Firmware: {state.firmware_version}", text_color, False),
-            (f"Serial: {state.serial_number}", text_color, False),
+            (f"Model: {storage.get_model_name()}", text_color, False),
+            (f"Firmware: {storage.get_firmware_version()}", text_color, False),
+            (f"Serial: {storage.get_serial_number()}", text_color, False),
             ("", None, False),
-            (f"Capacity: {state.storage_capacity_gb} GB", text_color, False),
-            (f"Free: {state.storage_free_gb} GB", secondary, False),
-            (f"Songs: {state.song_count}", text_color, False),
+            (f"Capacity: {storage.get_capacity_gb()} GB", text_color, False),
+            (f"Free: {storage.get_free_gb()} GB", secondary, False),
+            (f"Songs: {storage.get_song_count()}", text_color, False),
             ("", None, False),
             ("Press BACK to return", secondary, False),
         ]

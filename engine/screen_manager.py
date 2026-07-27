@@ -26,30 +26,30 @@ class ScreenManager:
     def screen_cls(self):
         return self._screen_cls
 
-    def open(self, screen_cls: Type, state):
+    def open(self, screen_cls: Type):
         """Instantiate a screen class and set it as active."""
         self._screen = screen_cls()
         self._screen_cls = screen_cls
-        self._screen.on_enter(state)
+        self._screen.on_enter()
 
-    def close(self, state):
+    def close(self):
         """Close the active screen and return to menu."""
         if self._screen:
-            self._screen.on_exit(state)
+            self._screen.on_exit()
             self._screen = None
             self._screen_cls = None
 
-    def handle_input(self, event: InputEvent, state) -> bool:
+    def handle_input(self, event: InputEvent) -> bool:
         """Delegate input to the active screen. Returns True if consumed."""
         if not self._screen:
             return False
-        result = self._screen.handle_input(event, state)
+        result = self._screen.handle_input(event)
         if result == "back":
-            self.close(state)
+            self.close()
             return True
         return True
 
-    def render(self, renderer, assets, state, theme, viewport):
+    def render(self, renderer, assets, theme, viewport):
         """Delegate rendering to the active screen."""
         if self._screen:
-            self._screen.render(renderer, assets, state, theme, viewport)
+            self._screen.render(renderer, assets, theme, viewport)

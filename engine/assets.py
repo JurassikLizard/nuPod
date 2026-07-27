@@ -73,16 +73,42 @@ class AssetManager:
             self._sprites[name] = (tex, w, h // frames, frames)
         return self._sprites[name]
 
-    def get_dynamic_texture(self, path):
+    def get_dynamic_texture(self, path, max_size=None):
         """For content loaded at runtime (album art). No color-key applied —
-        real photos may legitimately contain magenta pixels."""
-        if path not in self._dynamic:
+        real photos may legitimately contain magenta pixels.
+
+        If *max_size* is ``(max_w, max_h)`` the image is scaled proportionally
+        to fit within those bounds.  The returned ``(tex, w, h)`` reflects the
+        scaled size (or the original size if no scaling was needed).
+        """
+        cache_key = (path, max_size) if max_size else path
+        if cache_key not in self._dynamic:
             surf = self._load_surface(path)
             w, h = surf.contents.w, surf.contents.h
+
+            if max_size:
+                max_w, max_h = max_size
+                scale = min(max_w / w, max_h / h)
+                if scale < 1.0:
+                    new_w = max(1, int(w * scale))
+                    new_h = max(1, int(h * scale))
+                    # Create a target surface with the same pixel format as the
+                    # source so that SDL_BlitScaled doesn't need to convert.
+                    fmt = surf.contents.format.contents
+                    new_surf = sdl2.SDL_CreateRGBSurface(
+                        0, new_w, new_h, fmt.BitsPerPixel,
+                        fmt.Rmask, fmt.Gmask, fmt.Bmask, fmt.Amask,
+                    )
+                    if new_surf:
+                        sdl2.SDL_BlitScaled(surf, None, new_surf, None)
+                        sdl2.SDL_FreeSurface(surf)
+                        surf = new_surf
+                        w, h = new_w, new_h
+
             tex = self._texture_from_surface(surf, colorkey=False)
             sdl2.SDL_FreeSurface(surf)
-            self._dynamic[path] = (tex, w, h)
-        return self._dynamic[path]
+            self._dynamic[cache_key] = (tex, w, h)
+        return self._dynamic[cache_key]
 
     def render_text(self, text, color=None):
         if not text:

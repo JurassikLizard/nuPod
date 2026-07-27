@@ -6,6 +6,7 @@ Selecting an album shows its songs, selecting a song starts playback.
 
 from . import Screen, ScrollEvent, ButtonPress, Button
 from .songs import STUB_SONGS
+from hardware import audio
 import sdl2
 
 
@@ -32,7 +33,7 @@ class AlbumsScreen(Screen):
         self._selected = 0
         self._scroll_offset = 0
 
-    def handle_input(self, event, state):
+    def handle_input(self, event):
         if isinstance(event, ScrollEvent):
             items = self._current_items()
             if event.direction < 0:
@@ -61,11 +62,11 @@ class AlbumsScreen(Screen):
                     display = song_name.split(" - ", 1)[1] if " - " in song_name else song_name
                     album_name = self._stack[0]["label"]
                     album_artist = next((a["artist"] for a in STUB_ALBUMS if a["name"] == album_name), "Unknown Artist")
-                    state.title = display
-                    state.artist = album_artist
-                    state.album = album_name
-                    state.elapsed_sec = 0.0
-                    state.play_state = "PLAYING"
+                    audio.set_title(display)
+                    audio.set_artist(album_artist)
+                    audio.set_album(album_name)
+                    audio.set_elapsed_sec(0.0)
+                    audio.set_play_state("PLAYING")
             return True
         return False
 
@@ -74,7 +75,7 @@ class AlbumsScreen(Screen):
             return STUB_ALBUMS
         return self._stack[-1]["items"]
 
-    def render(self, renderer, assets, state, theme, viewport):
+    def render(self, renderer, assets, theme, viewport):
         vx, vy, vw, vh = viewport
         bg = self._hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))
         sdl2.SDL_SetRenderDrawColor(renderer, *bg, 255)

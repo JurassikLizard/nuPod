@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 @dataclass
 class _DisplayStub:
-    backlight_mode: str = "ON"     # ON | OFF | TIMER
+    backlight_mode: str = "ON"     # ON | OFF
     backlight_timeout_s: int = 10
     contrast: int = 50
 
@@ -22,7 +22,7 @@ def get_backlight_mode() -> str:
 
 
 def set_backlight_mode(mode: str) -> None:
-    assert mode in ("ON", "OFF", "TIMER"), f"Invalid backlight mode: {mode}"
+    assert mode in ("ON", "OFF"), f"Invalid backlight mode: {mode}"
     _IMPL.backlight_mode = mode
 
 

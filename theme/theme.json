@@ -1,6 +1,6 @@
 {
   "canvas": { "width": 220, "height": 176 },
-  "window": { "width": 960, "height": 640 },
+  "window": { "width": 220, "height": 176 },
   "assets_root": "assets",
   "colors": {
     "foreground": "000000",

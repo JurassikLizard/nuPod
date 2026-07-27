@@ -35,7 +35,7 @@ class EQScreen(Screen):
             ("Acoustic",  [4, 3, 1, 0, -1, 0, 1, 3, 4]),
         ]
 
-    def handle_input(self, event, state):
+    def handle_input(self, event):
         if isinstance(event, ScrollEvent):
             # Scroll wheel adjusts the selected band level
             # CCW (-1) = decrease, CW (+1) = increase
@@ -63,7 +63,7 @@ class EQScreen(Screen):
             return True
         return False
 
-    def render(self, renderer, assets, state, theme, viewport):
+    def render(self, renderer, assets, theme, viewport):
         vx, vy, vw, vh = viewport
         bg = self._hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))
         sdl2.SDL_SetRenderDrawColor(renderer, *bg, 255)

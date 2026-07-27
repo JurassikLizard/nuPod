@@ -5,6 +5,7 @@ matching the iPod classic Extras > Clock screen.
 """
 
 from . import Screen, ButtonPress, Button
+from hardware import clock as hwclock
 import sdl2
 import sdl2.sdlttf as sdlttf
 import os
@@ -34,12 +35,12 @@ class ClockScreen(Screen):
             pass
         return self._large_font
 
-    def handle_input(self, event, state):
+    def handle_input(self, event):
         if isinstance(event, ButtonPress) and event.button == Button.UP:
             return "back"
         return False
 
-    def render(self, renderer, assets, state, theme, viewport):
+    def render(self, renderer, assets, theme, viewport):
         vx, vy, vw, vh = viewport
 
         # Background
@@ -51,18 +52,15 @@ class ClockScreen(Screen):
         secondary = self._hex_rgb(theme.get("colors", {}).get("secondary_text", "999999"))
 
         # Time string
-        if state.clock_24h:
-            time_str = f"{int(state.hour):02d}:{int(state.minute):02d}"
+        if hwclock.is_24h():
+            time_str = f"{int(hwclock.get_hour()):02d}:{int(hwclock.get_minute()):02d}"
         else:
-            h = int(state.hour) % 12 or 12
-            ampm = "AM" if state.hour < 12 else "PM"
-            time_str = f"{h}:{int(state.minute):02d} {ampm}"
+            h = int(hwclock.get_hour()) % 12 or 12
+            ampm = "AM" if hwclock.get_hour() < 12 else "PM"
+            time_str = f"{h}:{int(hwclock.get_minute()):02d} {ampm}"
 
-        # Date string
-        months = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        month_name = months[state.month] if 1 <= state.month <= 12 else "???"
-        date_str = f"{month_name} {state.day}, {state.year}"
+        # Date string — use clock.format_date() which already builds the right format
+        date_str = hwclock.format_date()
 
         # Render time with large font if available
         large_font = self._get_large_font(assets)

@@ -25,7 +25,7 @@ class GamesScreen(Screen):
         self._scroll_offset = 0
         self._playing = None  # name of active game
 
-    def handle_input(self, event, state):
+    def handle_input(self, event):
         if isinstance(event, ScrollEvent):
             if not self._playing:
                 if event.direction < 0:
@@ -46,7 +46,7 @@ class GamesScreen(Screen):
             return True
         return False
 
-    def render(self, renderer, assets, state, theme, viewport):
+    def render(self, renderer, assets, theme, viewport):
         vx, vy, vw, vh = viewport
         bg = self._hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))
         sdl2.SDL_SetRenderDrawColor(renderer, *bg, 255)

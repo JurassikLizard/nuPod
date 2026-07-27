@@ -45,12 +45,12 @@ def trigger_volume_change() -> None:
 
 
 def _get_change_timer() -> float:
-    """Internal — used by PlayerState adapter."""
+    """Internal — volume-change display timer."""
     return _IMPL.change_timer
 
 
 def _set_change_timer(v: float) -> None:
-    """Internal — used by PlayerState adapter."""
+    """Internal — volume-change display timer."""
     _IMPL.change_timer = max(0.0, v)
 
 

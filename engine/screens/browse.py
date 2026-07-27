@@ -5,6 +5,7 @@ a hierarchical browse experience.
 """
 
 from . import Screen, ScrollEvent, ButtonPress, Button
+from hardware import audio
 import sdl2
 
 
@@ -79,7 +80,7 @@ class BrowseScreen(Screen):
         self._selected = min(self._selected, max(0, len(self._entries) - 1))
         self._scroll_offset = 0
 
-    def handle_input(self, event, state):
+    def handle_input(self, event):
         if isinstance(event, ScrollEvent):
             if event.direction < 0:  # CCW = up
                 self._selected = max(0, self._selected - 1)
@@ -100,15 +101,15 @@ class BrowseScreen(Screen):
                     self._current_path = f"{self._current_path.rstrip('/')}/{name}"
                     self._refresh_entries()
                 elif kind == "file":
-                    state.title = name.rsplit(".", 1)[0]
-                    state.artist = "Unknown Artist"
-                    state.album = "Unknown Album"
-                    state.elapsed_sec = 0.0
-                    state.play_state = "PLAYING"
+                    audio.set_title(name.rsplit(".", 1)[0])
+                    audio.set_artist("Unknown Artist")
+                    audio.set_album("Unknown Album")
+                    audio.set_elapsed_sec(0.0)
+                    audio.set_play_state("PLAYING")
             return True
         return False
 
-    def render(self, renderer, assets, state, theme, viewport):
+    def render(self, renderer, assets, theme, viewport):
         vx, vy, vw, vh = viewport
 
         bg = self._hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))

@@ -14,15 +14,15 @@ class Screen:
     on_enter(), and on_exit().
     """
 
-    def on_enter(self, state):
+    def on_enter(self):
         """Called when this screen becomes active (pushed onto stack)."""
         pass
 
-    def on_exit(self, state):
+    def on_exit(self):
         """Called when this screen is no longer active (popped from stack)."""
         pass
 
-    def handle_input(self, event: InputEvent, state):
+    def handle_input(self, event: InputEvent):
         """Handle an input event (ButtonPress or ScrollEvent).
 
         Return "back" to signal the screen should close and return to menu.
@@ -30,7 +30,7 @@ class Screen:
         """
         return False
 
-    def render(self, renderer, assets, state, theme, viewport):
+    def render(self, renderer, assets, theme, viewport):
         """Draw this screen. viewport is (x, y, w, h) for the rendering area."""
         pass
 
@@ -41,7 +41,6 @@ from .clock import ClockScreen
 from .about import AboutScreen
 from .now_playing import NowPlayingScreen
 from .songs import SongsScreen
-from .browse import BrowseScreen
 from .placeholder import PlaceholderScreen
 from .playlists import PlaylistsScreen
 from .artists import ArtistsScreen

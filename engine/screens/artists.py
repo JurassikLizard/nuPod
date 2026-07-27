@@ -7,6 +7,7 @@ Selecting a song starts playback.
 
 from . import Screen, ScrollEvent, ButtonPress, Button
 from .songs import STUB_SONGS
+from hardware import audio
 import sdl2
 
 
@@ -56,7 +57,7 @@ class ArtistsScreen(Screen):
         self._selected = 0
         self._scroll_offset = 0
 
-    def handle_input(self, event, state):
+    def handle_input(self, event):
         if isinstance(event, ScrollEvent):
             items = self._current_items()
             if event.direction < 0:
@@ -89,11 +90,11 @@ class ArtistsScreen(Screen):
                     song_idx = self._current_items()[self._selected]
                     sname = STUB_SONGS[song_idx] if song_idx < len(STUB_SONGS) else f"Track {song_idx + 1}"
                     display = sname.split(" - ", 1)[1] if " - " in sname else sname
-                    state.title = display
-                    state.artist = self._stack[0]["label"]
-                    state.album = self._stack[1]["label"]
-                    state.elapsed_sec = 0.0
-                    state.play_state = "PLAYING"
+                    audio.set_title(display)
+                    audio.set_artist(self._stack[0]["label"])
+                    audio.set_album(self._stack[1]["label"])
+                    audio.set_elapsed_sec(0.0)
+                    audio.set_play_state("PLAYING")
             return True
         return False
 
@@ -107,7 +108,7 @@ class ArtistsScreen(Screen):
             return "Artists"
         return self._stack[-1]["label"]
 
-    def render(self, renderer, assets, state, theme, viewport):
+    def render(self, renderer, assets, theme, viewport):
         vx, vy, vw, vh = viewport
         bg = self._hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))
         sdl2.SDL_SetRenderDrawColor(renderer, *bg, 255)

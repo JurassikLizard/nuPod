@@ -22,7 +22,7 @@ class _AudioStub:
     is_vbr: bool = False
     has_id3: bool = True
     next_title: Optional[str] = "Next Track"
-    album_art_path: Optional[str] = None
+    album_art_path: Optional[str] = "files/Tame-Impala-Currents-final-packshot-1200px_1000.jpg"
 
 
 _IMPL = _AudioStub()
@@ -35,8 +35,7 @@ def get_play_state() -> str:
 
 
 def set_play_state(state: str) -> None:
-    assert st
-    ate in ("STOPPED", "PLAYING", "PAUSED", "FF", "REW"), f"Invalid state: {state}"
+    assert state in ("STOPPED", "PLAYING", "PAUSED", "FF", "REW"), f"Invalid state: {state}"
     _IMPL.play_state = state
 
 

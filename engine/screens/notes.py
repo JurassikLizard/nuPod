@@ -30,7 +30,7 @@ class NotesScreen(Screen):
         self._detail_mode = False
         self._detail_scroll = 0
 
-    def handle_input(self, event, state):
+    def handle_input(self, event):
         if isinstance(event, ScrollEvent):
             if self._detail_mode:
                 if event.direction < 0:
@@ -58,7 +58,7 @@ class NotesScreen(Screen):
             return True
         return False
 
-    def render(self, renderer, assets, state, theme, viewport):
+    def render(self, renderer, assets, theme, viewport):
         vx, vy, vw, vh = viewport
         bg = self._hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))
         sdl2.SDL_SetRenderDrawColor(renderer, *bg, 255)

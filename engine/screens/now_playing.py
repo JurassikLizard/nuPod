@@ -5,6 +5,7 @@ progress bar, status bar icons, and a volume overlay when active.
 """
 
 from . import Screen, ButtonPress, Button
+from hardware import audio, battery, disk, input as hwinput, volume, settings as hwsettings, clock as hwclock
 import sdl2
 
 
@@ -19,7 +20,7 @@ class NowPlayingScreen(Screen):
 
     # ---- status bar helpers ------------------------------------------------
 
-    def _render_status_bar(self, renderer, assets, state, theme, viewport):
+    def _render_status_bar(self, renderer, assets, theme, viewport):
         """Draw the top status bar: time, battery, playmode, disk, hold."""
         vx, vy, vw, vh = viewport
         sb_h = theme.get("statusbar", {}).get("height", 22)
@@ -27,34 +28,34 @@ class NowPlayingScreen(Screen):
         sb_rgb = self._hex_rgb(sb_color)
 
         # Clock / status text (cycling every 10s)
-        self._render_status_text(renderer, assets, state, vx, vy, vw, sb_h, sb_rgb)
+        self._render_status_text(renderer, assets, vx, vy, vw, sb_h, sb_rgb)
 
         # Battery sprite
-        self._render_battery(renderer, assets, state, vx, vy, vw, sb_h)
+        self._render_battery(renderer, assets, vx, vy, vw, sb_h)
 
         # Playmode or disk sprite
-        self._render_playmode_or_disk(renderer, assets, state, vx, vy, sb_h)
+        self._render_playmode_or_disk(renderer, assets, vx, vy, sb_h)
 
         # Hold icon
-        if state.hold_active or state.remote_hold_active:
+        if hwinput.is_hold_active() or hwinput.is_remote_hold_active():
             tex, tw, th = assets.get_texture("hold")
             if tex:
                 dst = sdl2.SDL_Rect(vx + 24, vy + 4, tw, th)
                 sdl2.SDL_RenderCopy(renderer, tex, None, dst)
 
-    def _render_status_text(self, renderer, assets, state, vx, vy, vw, sb_h, color):
+    def _render_status_text(self, renderer, assets, vx, vy, vw, sb_h, color):
         import time
         # Cycle between status text and clock every 10 seconds
         t = int(time.time() * 10)  # 10-second cycle
         if t % 10 < 5:
-            text = "Now Playing" if state.audio_active else "iPod"
+            text = "Now Playing" if audio.is_audio_active() else "iPod"
         else:
-            if state.clock_24h:
-                text = f"{int(state.hour):02d}:{int(state.minute):02d}"
+            if hwclock.is_24h():
+                text = f"{int(hwclock.get_hour()):02d}:{int(hwclock.get_minute()):02d}"
             else:
-                h = int(state.hour) % 12 or 12
-                ampm = "AM" if state.hour < 12 else "PM"
-                text = f"{h}:{int(state.minute):02d} {ampm}"
+                h = int(hwclock.get_hour()) % 12 or 12
+                ampm = "AM" if hwclock.get_hour() < 12 else "PM"
+                text = f"{h}:{int(hwclock.get_minute()):02d} {ampm}"
         tex, tw, th = assets.render_text(text, color)
         if tex:
             cx = vx + vw // 2
@@ -62,26 +63,26 @@ class NowPlayingScreen(Screen):
             sdl2.SDL_RenderCopy(renderer, tex, None, dst)
             sdl2.SDL_DestroyTexture(tex)
 
-    def _render_battery(self, renderer, assets, state, vx, vy, vw, sb_h):
+    def _render_battery(self, renderer, assets, vx, vy, vw, sb_h):
         tex, fw, fh, frames = assets.get_sprite("battery")
         if not tex:
             return
-        if state.charging:
+        if battery.is_charging():
             # Animate first 2 frames
             import time
             frame = int(time.time() * 2) % 2
-        elif state.charged_full:
+        elif battery.is_charged_full():
             frame = 2
         else:
-            bin_idx = min(21, int(state.battery_percent / 100 * 22))
+            bin_idx = min(21, int(battery.get_battery_percent() / 100 * 22))
             frame = 3 + bin_idx
         frame = max(0, min(frames - 1, frame))
         src = sdl2.SDL_Rect(0, frame * fh, fw, fh)
         dst = sdl2.SDL_Rect(vx + vw - fw - 2, vy + 4, fw, fh)
         sdl2.SDL_RenderCopy(renderer, tex, src, dst)
 
-    def _render_playmode_or_disk(self, renderer, assets, state, vx, vy, sb_h):
-        if state.disk_active:
+    def _render_playmode_or_disk(self, renderer, assets, vx, vy, sb_h):
+        if disk.is_disk_active():
             tex, fw, fh, frames = assets.get_sprite("disk")
             if tex:
                 import time
@@ -93,30 +94,30 @@ class NowPlayingScreen(Screen):
             # Playmode icon
             tex, fw, fh, frames = assets.get_sprite("playmode")
             if tex:
-                frame = {"PLAYING": 0, "PAUSED": 1, "FF": 2, "REW": 3}.get(state.play_state, 0)
+                frame = {"PLAYING": 0, "PAUSED": 1, "FF": 2, "REW": 3}.get(audio.get_play_state(), 0)
                 src = sdl2.SDL_Rect(0, frame * fh, fw, fh)
                 dst = sdl2.SDL_Rect(vx + 4, vy + 5, fw, fh)
                 sdl2.SDL_RenderCopy(renderer, tex, src, dst)
 
     # ---- content area ------------------------------------------------------
 
-    def _render_content(self, renderer, assets, state, theme, viewport):
+    def _render_content(self, renderer, assets, theme, viewport):
         vx, vy, vw, vh = viewport
         sb_h = theme.get("statusbar", {}).get("height", 22)
         cy = vy + sb_h  # content starts below status bar
 
-        album_art_path = state.album_art_path
+        album_art_path = audio.get_album_art_path()
 
         if album_art_path:
-            self._render_album_art_layout(renderer, assets, state, vx, cy, vw, vh - sb_h)
+            self._render_album_art_layout(renderer, assets, vx, cy, vw, vh - sb_h)
         else:
-            self._render_no_art_layout(renderer, assets, state, vx, cy, vw, vh - sb_h)
+            self._render_no_art_layout(renderer, assets, vx, cy, vw, vh - sb_h)
 
         # Shuffle/repeat icons (top of content area)
-        self._render_mode_indicators(renderer, assets, state, vx, cy + 2, vw)
+        self._render_mode_indicators(renderer, assets, vx, cy + 2, vw)
 
         # Playlist position
-        pos_text = f"{state.playlist_pos} of {state.playlist_len}"
+        pos_text = f"{audio.get_playlist_pos()} of {audio.get_playlist_len()}"
         pos_color = self._hex_rgb(theme.get("colors", {}).get("secondary_text", "999999"))
         pos_tex, ptw, pth = assets.render_text(pos_text, pos_color)
         if pos_tex:
@@ -128,17 +129,23 @@ class NowPlayingScreen(Screen):
         self._render_separator(renderer, vx, cy)
 
         # Progress bar at bottom
-        self._render_progress_bar(renderer, assets, state, vx, cy, vw, vh - sb_h)
+        self._render_progress_bar(renderer, assets, vx, cy, vw, vh - sb_h)
 
         # Elapsed / remaining time
-        self._render_time_info(renderer, assets, state, vx, cy, vw, vh - sb_h)
+        self._render_time_info(renderer, assets, vx, cy, vw, vh - sb_h)
 
-    def _render_album_art_layout(self, renderer, assets, state, ox, oy, cw, ch):
+    def _render_album_art_layout(self, renderer, assets, ox, oy, cw, ch):
         """Layout with album art on the left, info on the right."""
-        # Album art
-        tex, _, _ = assets.get_dynamic_texture(state.album_art_path)
+        # Album art — scale to fit within the 60 × 60 frame, preserving aspect ratio
+        ART_SIZE = 60
+        tex, tw, th = assets.get_dynamic_texture(
+            audio.get_album_art_path(), max_size=(ART_SIZE, ART_SIZE),
+        )
         if tex:
-            dst = sdl2.SDL_Rect(ox + 8, oy + 34, 60, 60)
+            # Centre non-square art within the frame
+            art_x = ox + 8 + (ART_SIZE - tw) // 2
+            art_y = oy + 34 + (ART_SIZE - th) // 2
+            dst = sdl2.SDL_Rect(art_x, art_y, tw, th)
             sdl2.SDL_RenderCopy(renderer, tex, None, dst)
 
         # Art frame borders
@@ -153,22 +160,22 @@ class NowPlayingScreen(Screen):
         info_w = 144
         text_color = self._hex_rgb("000000")
         items = [
-            (state.title if state.has_id3 else state.filename, 34),
-            (state.artist if state.has_id3 and state.artist else None, 52),
-            (state.album if state.has_id3 and state.album else None, 70),
+            (audio.get_title() if audio.has_id3() else audio.get_filename(), 34),
+            (audio.get_artist() if audio.has_id3() and audio.get_artist() else None, 52),
+            (audio.get_album() if audio.has_id3() and audio.get_album() else None, 70),
         ]
         for text, y in items:
             if text is None:
                 continue
             self._draw_marquee_text(renderer, assets, text, info_x, oy + y, info_w, text_color, id(text))
 
-    def _render_no_art_layout(self, renderer, assets, state, ox, oy, cw, ch):
+    def _render_no_art_layout(self, renderer, assets, ox, oy, cw, ch):
         """Layout centered text when no album art."""
         text_color = self._hex_rgb("000000")
         items = [
-            (state.title if state.has_id3 else state.filename, 34),
-            (state.artist if state.has_id3 and state.artist else None, 58),
-            (state.album if state.has_id3 and state.album else None, 82),
+            (audio.get_title() if audio.has_id3() else audio.get_filename(), 34),
+            (audio.get_artist() if audio.has_id3() and audio.get_artist() else None, 58),
+            (audio.get_album() if audio.has_id3() and audio.get_album() else None, 82),
         ]
         for text, y in items:
             if text is None:
@@ -199,16 +206,16 @@ class NowPlayingScreen(Screen):
             sdl2.SDL_RenderSetClipRect(renderer, None)
         sdl2.SDL_DestroyTexture(tex)
 
-    def _render_mode_indicators(self, renderer, assets, state, ox, oy, cw):
+    def _render_mode_indicators(self, renderer, assets, ox, oy, cw):
         """Shuffle and repeat icons."""
-        if state.repeat_mode != "OFF":
+        if hwsettings.get_repeat_mode() != "OFF":
             tex, fw, fh, frames = assets.get_sprite("repeat")
             if tex:
-                frame = {"ALL": 0, "ONE": 1, "AB": 2, "SHUFFLE": 3}.get(state.repeat_mode, 0)
+                frame = {"ALL": 0, "ONE": 1, "AB": 2, "SHUFFLE": 3}.get(hwsettings.get_repeat_mode(), 0)
                 src = sdl2.SDL_Rect(0, frame * fh, fw, fh)
                 dst = sdl2.SDL_Rect(ox + 177, oy, fw, fh)
                 sdl2.SDL_RenderCopy(renderer, tex, src, dst)
-        if state.shuffle_enabled:
+        if hwsettings.is_shuffle_enabled():
             tex, fw, fh, _ = assets.get_sprite("shuffle")
             if tex:
                 dst = sdl2.SDL_Rect(ox + 193, oy, fw, fh)
@@ -219,13 +226,13 @@ class NowPlayingScreen(Screen):
         sdl2.SDL_SetRenderDrawColor(renderer, 180, 180, 180, 255)
         sdl2.SDL_RenderDrawLine(renderer, ox + 8, oy + 98, ox + 212, oy + 98)
 
-    def _render_progress_bar(self, renderer, assets, state, ox, oy, cw, ch):
-        if state.volume_mode_active:
+    def _render_progress_bar(self, renderer, assets, ox, oy, cw, ch):
+        if volume.is_volume_mode_active():
             img_name = "volume_bar"
-            value = state.volume_percent / 100.0
+            value = volume.get_volume_percent() / 100.0
         else:
             img_name = "progress_bar"
-            value = state.track_progress
+            value = audio.get_track_progress()
         tex, iw, ih = assets.get_texture(img_name)
         if not tex:
             return
@@ -237,7 +244,7 @@ class NowPlayingScreen(Screen):
             sdl2.SDL_RenderCopy(renderer, tex, src, dst)
 
         # Volume mode left/right icons
-        if state.volume_mode_active:
+        if volume.is_volume_mode_active():
             il, _, _ = assets.get_texture("vol_left")
             if il:
                 sdl2.SDL_RenderCopy(renderer, il, None, sdl2.SDL_Rect(ox + 4, oy + 101, 0, 0))
@@ -245,10 +252,10 @@ class NowPlayingScreen(Screen):
             if ir:
                 sdl2.SDL_RenderCopy(renderer, ir, None, sdl2.SDL_Rect(ox + 193, oy + 101, 0, 0))
 
-    def _render_time_info(self, renderer, assets, state, ox, oy, cw, ch):
-        if state.volume_mode_active:
+    def _render_time_info(self, renderer, assets, ox, oy, cw, ch):
+        if volume.is_volume_mode_active():
             return
-        e, r = int(state.elapsed_sec), int(state.remaining_sec)
+        e, r = int(audio.get_elapsed_sec()), int(audio.get_remaining_sec())
         elapsed = f"{e // 60}:{e % 60:02d}"
         remaining = f"-{r // 60}:{r % 60:02d}"
         color = self._hex_rgb("000000")
@@ -267,28 +274,29 @@ class NowPlayingScreen(Screen):
 
     # ---- Screen protocol ---------------------------------------------------
 
-    def on_enter(self, state):
+    def on_enter(self):
         self._scroll_offsets = {}
 
-    def handle_input(self, event, state):
+    def handle_input(self, event):
         if isinstance(event, ButtonPress):
             if event.button == Button.UP:
                 return "back"
             if event.button in (Button.CENTER, Button.DOWN):
                 # Toggle play/pause
-                state.play_state = "PAUSED" if state.play_state == "PLAYING" else "PLAYING"
+                ps = audio.get_play_state()
+                audio.set_play_state("PAUSED" if ps == "PLAYING" else "PLAYING")
                 return True
             if event.button == Button.LEFT:
                 # Rewind / previous track (stub: reset elapsed)
-                state.elapsed_sec = 0.0
+                audio.set_elapsed_sec(0.0)
                 return True
             if event.button == Button.RIGHT:
                 # Forward / next track (stub: reset elapsed)
-                state.elapsed_sec = 0.0
+                audio.set_elapsed_sec(0.0)
                 return True
         return False
 
-    def render(self, renderer, assets, state, theme, viewport):
+    def render(self, renderer, assets, theme, viewport):
         vx, vy, vw, vh = viewport
 
         # Background
@@ -297,8 +305,8 @@ class NowPlayingScreen(Screen):
         sdl2.SDL_SetRenderDrawColor(renderer, *bg_rgb, 255)
         sdl2.SDL_RenderFillRect(renderer, sdl2.SDL_Rect(vx, vy, vw, vh))
 
-        self._render_status_bar(renderer, assets, state, theme, viewport)
-        self._render_content(renderer, assets, state, theme, viewport)
+        self._render_status_bar(renderer, assets, theme, viewport)
+        self._render_content(renderer, assets, theme, viewport)
 
     @staticmethod
     def _hex_rgb(h):

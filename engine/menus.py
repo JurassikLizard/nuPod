@@ -10,7 +10,6 @@ from .screens.now_playing import NowPlayingScreen
 from .screens.about import AboutScreen
 from .screens.clock import ClockScreen
 from .screens.songs import SongsScreen
-from .screens.browse import BrowseScreen
 from .screens.placeholder import PlaceholderScreen
 from .screens.playlists import PlaylistsScreen
 from .screens.artists import ArtistsScreen
@@ -23,6 +22,7 @@ from .screens.calendar import CalendarScreen
 from .screens.notes import NotesScreen
 from .screens.games import GamesScreen
 from .screens.eq import EQScreen
+from hardware import audio, display, volume, settings as hwsettings
 
 
 def placeholder_item(title, message="Not yet available"):
@@ -34,7 +34,7 @@ def placeholder_item(title, message="Not yet available"):
     ))
 
 
-def build_main_menu(state, close_menu_fn, quit_fn=None):
+def build_main_menu(close_menu_fn, quit_fn=None):
     """Build the main menu tree. Call this each time the menu is opened
     so conditional items (Now Playing) reflect current state."""
 
@@ -45,18 +45,6 @@ def build_main_menu(state, close_menu_fn, quit_fn=None):
         screen_item("Artists", ArtistsScreen),
         screen_item("Albums", AlbumsScreen),
         screen_item("Songs", SongsScreen),
-        screen_item("Genres", GenresScreen),
-        screen_item("Composers", ComposersScreen),
-        screen_item("Audiobooks", AudiobooksScreen),
-    ])
-
-    # ---- Browse submenu ----------------------------------------------------
-
-    browse_sub = submenu("Browse", [
-        screen_item("Playlists", PlaylistsScreen),
-        screen_item("Artists", ArtistsScreen),
-        screen_item("Albums", AlbumsScreen),
-        screen_item("Songs", type("BrowseSongs", (SongsScreen,), {})),
         screen_item("Genres", GenresScreen),
         screen_item("Composers", ComposersScreen),
         screen_item("Audiobooks", AudiobooksScreen),
@@ -84,33 +72,33 @@ def build_main_menu(state, close_menu_fn, quit_fn=None):
         # Backlight Timer (value adjust)
         value_setting(
             "Backlight Timer",
-            lambda: state.backlight_timeout_s,
-            lambda v: setattr(state, "backlight_timeout_s", v),
+            display.get_backlight_timeout,
+            display.set_backlight_timeout,
             5, 60, 5,
             formatter=lambda v: f"{v}s" if v > 0 else "Always On",
         ),
 
         # Clicker (toggle)
-        toggle("Clicker", lambda: state.clicker_enabled, lambda v: setattr(state, "clicker_enabled", v)),
+        toggle("Clicker", hwsettings.is_clicker_enabled, hwsettings.set_clicker_enabled),
 
         # EQ (full-screen graphic equalizer)
         screen_item("EQ", EQScreen),
 
         # Shuffle (toggle)
-        toggle("Shuffle", lambda: state.shuffle_enabled, lambda v: setattr(state, "shuffle_enabled", v)),
+        toggle("Shuffle", hwsettings.is_shuffle_enabled, hwsettings.set_shuffle_enabled),
 
         # Repeat (enum)
         enum_setting(
-            "Repeat", lambda: state.repeat_mode,
-            lambda v: setattr(state, "repeat_mode", v),
+            "Repeat", hwsettings.get_repeat_mode,
+            hwsettings.set_repeat_mode,
             ["OFF", "ALL", "ONE", "AB", "SHUFFLE"],
         ),
 
         # Volume Limit (value adjust)
         value_setting(
             "Volume Limit",
-            lambda: state.volume_limit,
-            lambda v: setattr(state, "volume_limit", v),
+            volume.get_volume_limit,
+            volume.set_volume_limit,
             0, 100, 10,
             formatter=lambda v: f"{v}%",
         ),
@@ -118,28 +106,28 @@ def build_main_menu(state, close_menu_fn, quit_fn=None):
         # Language (enum)
         enum_setting(
             "Language",
-            lambda: state.language,
-            lambda v: setattr(state, "language", v),
+            hwsettings.get_language,
+            hwsettings.set_language,
             ["English", "Spanish", "French", "German", "Japanese", "Chinese"],
         ),
 
         # Contrast (value adjust)
         value_setting(
             "Contrast",
-            lambda: state.contrast,
-            lambda v: setattr(state, "contrast", v),
+            display.get_contrast,
+            display.set_contrast,
             0, 100, 5,
             formatter=lambda v: f"{v}%",
         ),
 
         # Sound Check (toggle)
-        toggle("Sound Check", lambda: state.sound_check, lambda v: setattr(state, "sound_check", v)),
+        toggle("Sound Check", hwsettings.is_sound_check_enabled, hwsettings.set_sound_check_enabled),
 
         # Backlight (enum)
         enum_setting(
             "Backlight",
-            lambda: state.backlight_mode,
-            lambda v: setattr(state, "backlight_mode", v),
+            display.get_backlight_mode,
+            display.set_backlight_mode,
             ["ON", "OFF", "TIMER"],
         ),
 
@@ -155,14 +143,15 @@ def build_main_menu(state, close_menu_fn, quit_fn=None):
     items = []
 
     # Now Playing — only when a song is actually playing
-    if state.audio_active:
+    if audio.is_audio_active():
         items.append(screen_item("Now Playing", NowPlayingScreen))
 
     items.append(music_sub)
-    items.append(action("Shuffle Songs", lambda: setattr(state, "shuffle_enabled", True)))
-    items.append(browse_sub)
+    # items.append(browse_sub)
     items.append(extras_sub)
     items.append(settings_sub)
+    items.append(action("Shuffle Songs", lambda: hwsettings.set_shuffle_enabled(True)))
+    items.append(action("Backlight", lambda: display.set_backlight_mode("OFF" if display.get_backlight_mode() == "ON" else "ON")))
 
     if quit_fn:
         items.append(action("Quit", quit_fn))

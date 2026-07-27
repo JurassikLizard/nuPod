@@ -5,6 +5,7 @@ Selecting an audiobook shows its chapters, selecting a chapter starts playback.
 """
 
 from . import Screen, ScrollEvent, ButtonPress, Button
+from hardware import audio
 import sdl2
 
 
@@ -26,7 +27,7 @@ class AudiobooksScreen(Screen):
         self._selected = 0
         self._scroll_offset = 0
 
-    def handle_input(self, event, state):
+    def handle_input(self, event):
         if isinstance(event, ScrollEvent):
             items = self._current_items()
             if event.direction < 0:
@@ -52,11 +53,11 @@ class AudiobooksScreen(Screen):
                 else:
                     chapter = self._current_items()[self._selected]
                     book_title = self._stack[0]["label"]
-                    state.title = f"{book_title} - {chapter}"
-                    state.artist = "Unknown"
-                    state.album = book_title
-                    state.elapsed_sec = 0.0
-                    state.play_state = "PLAYING"
+                    audio.set_title(f"{book_title} - {chapter}")
+                    audio.set_artist("Unknown")
+                    audio.set_album(book_title)
+                    audio.set_elapsed_sec(0.0)
+                    audio.set_play_state("PLAYING")
             return True
         return False
 
@@ -65,7 +66,7 @@ class AudiobooksScreen(Screen):
             return STUB_AUDIOBOOKS
         return self._stack[-1]["items"]
 
-    def render(self, renderer, assets, state, theme, viewport):
+    def render(self, renderer, assets, theme, viewport):
         vx, vy, vw, vh = viewport
         bg = self._hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))
         sdl2.SDL_SetRenderDrawColor(renderer, *bg, 255)

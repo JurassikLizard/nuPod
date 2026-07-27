@@ -47,7 +47,7 @@ class ContactsScreen(Screen):
         self._scroll_offset = 0
         self._detail_mode = False  # show detail view for selected contact
 
-    def handle_input(self, event, state):
+    def handle_input(self, event):
         if isinstance(event, ScrollEvent):
             if not self._detail_mode:
                 if event.direction < 0:
@@ -68,7 +68,7 @@ class ContactsScreen(Screen):
             return True
         return False
 
-    def render(self, renderer, assets, state, theme, viewport):
+    def render(self, renderer, assets, theme, viewport):
         vx, vy, vw, vh = viewport
         bg = self._hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))
         sdl2.SDL_SetRenderDrawColor(renderer, *bg, 255)

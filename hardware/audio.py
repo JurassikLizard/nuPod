@@ -35,7 +35,8 @@ def get_play_state() -> str:
 
 
 def set_play_state(state: str) -> None:
-    assert state in ("STOPPED", "PLAYING", "PAUSED", "FF", "REW"), f"Invalid state: {state}"
+    assert st
+    ate in ("STOPPED", "PLAYING", "PAUSED", "FF", "REW"), f"Invalid state: {state}"
     _IMPL.play_state = state
 
 

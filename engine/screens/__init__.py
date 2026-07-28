@@ -14,6 +14,15 @@ class Screen:
     on_enter(), and on_exit().
     """
 
+    @property
+    def title(self):
+        """Title shown in the status bar when this screen is active."""
+        name = type(self).__name__
+        suffix = "Screen"
+        if name.endswith(suffix):
+            name = name[: -len(suffix)]
+        return name or "Screen"
+
     def on_enter(self):
         """Called when this screen becomes active (pushed onto stack)."""
         pass
@@ -30,8 +39,10 @@ class Screen:
         """
         return False
 
-    def render(self, renderer, assets, theme, viewport):
-        """Draw this screen. viewport is (x, y, w, h) for the rendering area."""
+    def render(self, renderer, assets, theme, viewport, dt=0.0):
+        """Draw this screen. viewport is (x, y, w, h) for the rendering area.
+        dt is the frame delta time in seconds.
+        """
         pass
 
 
@@ -54,10 +65,13 @@ from .notes import NotesScreen
 from .games import GamesScreen
 from .eq import EQScreen
 
+# Re-export the shared list screen base class
+from .list_screen import ListScreen
+
 __all__ = [
-    "Screen",
+    "Screen", "ListScreen",
     "ClockScreen", "AboutScreen", "NowPlayingScreen", "SongsScreen",
-    "BrowseScreen", "PlaceholderScreen",
+    "PlaceholderScreen",
     "PlaylistsScreen", "ArtistsScreen", "AlbumsScreen", "GenresScreen",
     "ComposersScreen", "AudiobooksScreen",
     "ContactsScreen", "CalendarScreen", "NotesScreen", "GamesScreen",

@@ -8,7 +8,7 @@ from typing import Optional
 
 @dataclass
 class _AudioStub:
-    play_state: str = "PLAYING"          # STOPPED | PLAYING | PAUSED | FF | REW
+    play_state: str = "STOPPED"          # STOPPED | PLAYING | PAUSED | FF | REW
     elapsed_sec: float = 0.0
     track_length_sec: float = 210.0
     playlist_pos: int = 1
@@ -153,6 +153,12 @@ def play_file(title: str, artist: str = "Unknown Artist",
     _IMPL.album = album
     _IMPL.elapsed_sec = 0.0
     _IMPL.play_state = "PLAYING"
+
+
+def stop() -> None:
+    """Stop playback and reset position."""
+    _IMPL.elapsed_sec = 0.0
+    _IMPL.play_state = "STOPPED"
 
 
 def tick_stub(dt: float) -> None:

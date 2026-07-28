@@ -12,12 +12,16 @@ import sdl2
 class AboutScreen(Screen):
     """Settings > About: device information."""
 
+    @property
+    def title(self):
+        return "About"
+
     def handle_input(self, event):
         if isinstance(event, ButtonPress) and event.button == Button.UP:
             return "back"
         return False
 
-    def render(self, renderer, assets, theme, viewport):
+    def render(self, renderer, assets, theme, viewport, dt=0.0):
         vx, vy, vw, vh = viewport
 
         # Background

@@ -18,6 +18,10 @@ NUM_BANDS = len(BAND_LABELS)
 class EQScreen(Screen):
     """Settings > EQ: graphic equalizer with 9 bands."""
 
+    @property
+    def title(self):
+        return "EQ"
+
     def __init__(self):
         self._bands = [0.0] * NUM_BANDS  # -12..+12 dB
         self._selected = 4  # start at 1KHz
@@ -63,7 +67,7 @@ class EQScreen(Screen):
             return True
         return False
 
-    def render(self, renderer, assets, theme, viewport):
+    def render(self, renderer, assets, theme, viewport, dt=0.0):
         vx, vy, vw, vh = viewport
         bg = self._hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))
         sdl2.SDL_SetRenderDrawColor(renderer, *bg, 255)

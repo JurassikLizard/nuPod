@@ -119,9 +119,15 @@ class MenuController:
     view (ScreenManager) is active.
     """
 
-    def __init__(self, root_items, root_title="Main Menu"):
+    def __init__(self, root_items, root_title="Main Menu",
+                 on_push=None, on_pop=None,
+                 on_post_push=None, on_post_pop=None):
         self._root_items = root_items
         self._root_title = root_title
+        self._on_push = on_push
+        self._on_pop = on_pop
+        self._on_post_push = on_post_push
+        self._on_post_pop = on_post_pop
         self.stack = [MenuScreen(self._root_title, self._root_items)]
 
     @property
@@ -130,6 +136,13 @@ class MenuController:
 
     def go_to_root(self):
         self.stack = self.stack[:1]
+        self.stack[0].selected = 0
+        self.stack[0].scroll_offset = 0
+        self.stack[0].adjust_mode = False
+
+    def rebuild_root(self, items):
+        """Replace the root menu's items (e.g. after Now Playing state changes)."""
+        self.stack[0].items = items
         self.stack[0].selected = 0
         self.stack[0].scroll_offset = 0
         self.stack[0].adjust_mode = False
@@ -169,7 +182,11 @@ class MenuController:
                 if screen.adjust_mode:
                     screen.adjust_mode = False
                 elif len(self.stack) > 1:
+                    if self._on_pop:
+                        self._on_pop()
                     self.stack.pop()
+                    if self._on_post_pop:
+                        self._on_post_pop()
             return
 
         # ── LEFT (Rewind / adjust left) ─────────────────────────────────
@@ -199,7 +216,11 @@ class MenuController:
                 screen.adjust_mode = True
                 return
             if item.kind == "submenu":
+                if self._on_push:
+                    self._on_push()
                 self.stack.append(MenuScreen(item.label, item.children))
+                if self._on_post_push:
+                    self._on_post_push()
                 return
             if item.kind == "action":
                 self.go_to_root()
@@ -272,6 +293,9 @@ class MenuRenderer:
             self._render_row(screen.items[i], i == screen.selected, y, screen.adjust_mode)
             y += self.row_h
 
+        # Scrollbar
+        self._draw_scrollbar(screen, visible_rows)
+
         sdl2.SDL_RenderSetClipRect(self.renderer, None)
 
     def _update_scroll(self, screen, visible_rows):
@@ -295,7 +319,7 @@ class MenuRenderer:
         value = item.display_value()
         if value is not None:
             self._blit_text(value, self.vx + self.vw - 4, y, value_color, align="right")
-        elif item.kind == "submenu":
+        elif item.kind in ("submenu", "screen"):
             self._blit_text(">", self.vx + self.vw - 4, y, value_color, align="right")
 
     def _blit_text(self, text, x, y, color, align):
@@ -317,3 +341,33 @@ class MenuRenderer:
             band_h = max(1, h // bands)
             sdl2.SDL_SetRenderDrawColor(self.renderer, r, g, bl, 255)
             sdl2.SDL_RenderFillRect(self.renderer, sdl2.SDL_Rect(x, y + b * band_h, w, band_h + 1))
+
+    # ── Scrollbar ────────────────────────────────────────────────────────────────
+
+    SCROLLBAR_WIDTH = 2
+    SCROLLBAR_TRACK_COLOR = (220, 220, 220)
+    SCROLLBAR_THUMB_COLOR = (160, 160, 160)
+    SCROLLBAR_MIN_THUMB_HEIGHT = 8
+
+    def _draw_scrollbar(self, screen, visible_rows):
+        total_items = len(screen.items)
+        if total_items <= visible_rows:
+            return
+
+        track_x = self.vx + self.vw - self.SCROLLBAR_WIDTH - 3
+        track_y = self.vy + 2
+        track_h = self.vh - 4
+
+        # Track
+        sdl2.SDL_SetRenderDrawColor(self.renderer, *self.SCROLLBAR_TRACK_COLOR, 255)
+        sdl2.SDL_RenderFillRect(self.renderer, sdl2.SDL_Rect(track_x, track_y, self.SCROLLBAR_WIDTH, track_h))
+
+        # Thumb — shorter by 2px top/bottom for visual "rounded" look
+        thumb_h = max(self.SCROLLBAR_MIN_THUMB_HEIGHT,
+                      int(track_h * visible_rows / total_items))
+        max_thumb_y = track_h - thumb_h
+        ratio = screen.scroll_offset / max(1, total_items - visible_rows)
+        thumb_y = int(track_y + ratio * max_thumb_y)
+
+        sdl2.SDL_SetRenderDrawColor(self.renderer, *self.SCROLLBAR_THUMB_COLOR, 255)
+        sdl2.SDL_RenderFillRect(self.renderer, sdl2.SDL_Rect(track_x, thumb_y, self.SCROLLBAR_WIDTH, thumb_h))

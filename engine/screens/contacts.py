@@ -42,6 +42,10 @@ STUB_CONTACTS = [
 class ContactsScreen(Screen):
     """Extras > Contacts: scrollable phonebook."""
 
+    @property
+    def title(self):
+        return "Contacts"
+
     def __init__(self):
         self._selected = 0
         self._scroll_offset = 0
@@ -68,7 +72,7 @@ class ContactsScreen(Screen):
             return True
         return False
 
-    def render(self, renderer, assets, theme, viewport):
+    def render(self, renderer, assets, theme, viewport, dt=0.0):
         vx, vy, vw, vh = viewport
         bg = self._hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))
         sdl2.SDL_SetRenderDrawColor(renderer, *bg, 255)

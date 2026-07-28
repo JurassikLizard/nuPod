@@ -17,6 +17,10 @@ MONTHS = ["", "January", "February", "March", "April", "May", "June",
 class CalendarScreen(Screen):
     """Extras > Calendar: month grid view."""
 
+    @property
+    def title(self):
+        return "Calendar"
+
     def __init__(self):
         self._year = 2026
         self._month = 7
@@ -51,7 +55,7 @@ class CalendarScreen(Screen):
             return day
         return None
 
-    def render(self, renderer, assets, theme, viewport):
+    def render(self, renderer, assets, theme, viewport, dt=0.0):
         vx, vy, vw, vh = viewport
         bg = self._hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))
         sdl2.SDL_SetRenderDrawColor(renderer, *bg, 255)

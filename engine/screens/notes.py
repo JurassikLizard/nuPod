@@ -23,6 +23,10 @@ STUB_NOTES = [
 class NotesScreen(Screen):
     """Extras > Notes: scrollable note list with detail view."""
 
+    @property
+    def title(self):
+        return "Notes"
+
     def __init__(self):
         self._notes = STUB_NOTES[:]
         self._selected = 0
@@ -58,7 +62,7 @@ class NotesScreen(Screen):
             return True
         return False
 
-    def render(self, renderer, assets, theme, viewport):
+    def render(self, renderer, assets, theme, viewport, dt=0.0):
         vx, vy, vw, vh = viewport
         bg = self._hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))
         sdl2.SDL_SetRenderDrawColor(renderer, *bg, 255)

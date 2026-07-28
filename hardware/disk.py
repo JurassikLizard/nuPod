@@ -26,8 +26,5 @@ def set_disk_active(v: bool) -> None:
 
 
 def tick_stub(dt: float) -> None:
-    """Brief periodic disk-access blip to exercise the animation."""
-    _IMPL._blip_timer += dt
-    if _IMPL._blip_timer >= 1.0:
-        _IMPL._blip_timer = 0.0
-        _IMPL.active = not _IMPL.active
+    """Disk activity is only triggered by actual operations (library scan, etc.)."""
+    pass

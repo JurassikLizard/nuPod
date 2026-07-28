@@ -14,6 +14,10 @@ import os
 class ClockScreen(Screen):
     """Extras > Clock: large digital clock with date."""
 
+    @property
+    def title(self):
+        return "Clock"
+
     def __init__(self):
         self._large_font = None
 
@@ -40,7 +44,7 @@ class ClockScreen(Screen):
             return "back"
         return False
 
-    def render(self, renderer, assets, theme, viewport):
+    def render(self, renderer, assets, theme, viewport, dt=0.0):
         vx, vy, vw, vh = viewport
 
         # Background

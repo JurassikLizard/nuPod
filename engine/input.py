@@ -26,6 +26,10 @@ The iPod Clickwheel has 5 physical buttons + a touch-sensitive scroll wheel:
     Short press (< 3s hold, release) = back one level
     Long press  (≥ 3s hold, release) = go to main menu
     Fires on KEYUP so duration can be measured.
+
+  DOWN (Play/Pause) button behavior:
+    Short press = toggle play/pause (fires on KEYDOWN for responsiveness)
+    Long press  (≥ 3s hold, release) = stop playback (fires on KEYUP)
 """
 
 from dataclasses import dataclass
@@ -82,10 +86,14 @@ _KEY_TO_BUTTON = {
     sdl2.SDLK_RIGHT:  Button.RIGHT,
 }
 
-# Long-press threshold for UP (Menu) button.
-# < 3s tap = back one level; ≥ 3s hold = go to root.
 _LONG_PRESS_THRESHOLD_S = 3.0
-_LONG_PRESS_BUTTONS = {Button.UP}
+_LONG_PRESS_BUTTONS = {Button.UP, Button.DOWN}
+
+# Buttons that fire only on KEYUP (for proper long-press measurement).
+# All others fire on KEYDOWN (responsive). Buttons in this set that are
+# ALSO in _LONG_PRESS_BUTTONS fire on KEYDOWN (responsive short press)
+# plus KEYUP (long press only).
+_KEYUP_ONLY = {Button.UP}
 
 
 # ── input stub ──────────────────────────────────────────────────────────────
@@ -109,9 +117,10 @@ class KeyboardInputStub:
             if sym in _KEY_TO_BUTTON:
                 button = _KEY_TO_BUTTON[sym]
                 self._held_keys[sym] = time.time()
-                # Long-press buttons (UP) fire only on KEYUP so we can
-                # measure duration.  All other buttons fire immediately.
-                if button not in _LONG_PRESS_BUTTONS:
+                # _KEYUP_ONLY buttons (UP/Menu) fire only on KEYUP so we
+                # can measure hold duration.  All other buttons fire
+                # immediately on KEYDOWN for responsive feel.
+                if button not in _KEYUP_ONLY:
                     return ButtonPress(button=button)
             return None
 
@@ -123,13 +132,17 @@ class KeyboardInputStub:
                 pressed_time = self._held_keys.pop(sym, None)
                 if pressed_time is not None:
                     duration = time.time() - pressed_time
-                    if button in _LONG_PRESS_BUTTONS:
+                    if button in _LONG_PRESS_BUTTONS and duration >= _LONG_PRESS_THRESHOLD_S:
+                        # Long press detected for any long-press-capable button
                         return ButtonPress(
                             button=button,
-                            long_press=duration >= _LONG_PRESS_THRESHOLD_S,
+                            long_press=True,
                             held_duration=duration,
                         )
-                    # Other buttons already fired on keydown; nothing to do
+                    if button in _KEYUP_ONLY:
+                        # UP short press fires here (KEYUP)
+                        return ButtonPress(button=button, long_press=False, held_duration=duration)
+                    # OTHER short press was already handled on KEYDOWN; nothing extra
             return None
 
         # ── mouse wheel → scroll ────────────────────────────────────────

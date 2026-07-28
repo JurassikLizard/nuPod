@@ -15,12 +15,16 @@ class PlaceholderScreen(Screen):
         self._title = title
         self._message = message
 
+    @property
+    def title(self):
+        return self._title
+
     def handle_input(self, event):
         if isinstance(event, ButtonPress) and event.button == Button.UP:
             return "back"
         return False
 
-    def render(self, renderer, assets, theme, viewport):
+    def render(self, renderer, assets, theme, viewport, dt=0.0):
         vx, vy, vw, vh = viewport
 
         bg = self._hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))

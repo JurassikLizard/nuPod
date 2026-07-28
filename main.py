@@ -19,6 +19,8 @@ from engine.input import KeyboardInputStub, ButtonPress, ScrollEvent, Button
 from engine.menu import MenuController, MenuRenderer
 from engine.screen_manager import ScreenManager
 from engine.menus import build_main_menu
+from engine.animator import Animator
+from engine.screens.now_playing import NowPlayingScreen
 
 # Hardware API — functional modules
 from hardware import battery
@@ -44,9 +46,9 @@ def hex_rgb(h):
     return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
 
 
-def render_status_bar(renderer, assets, theme):
-    """Draw the iPod classic status bar: time (center), battery (right),
-    playmode/disk (left), hold (left)."""
+def render_status_bar(renderer, assets, theme, title):
+    """Draw the iPod classic status bar: title (center), battery (right),
+    playmode/disk (left)."""
     sb = theme.get("statusbar", {})
     sb_h = sb.get("height", 22)
     canvas_w = theme["canvas"]["width"]
@@ -63,14 +65,8 @@ def render_status_bar(renderer, assets, theme):
     sdl2.SDL_SetRenderDrawColor(renderer, *border_color, 200)
     sdl2.SDL_RenderDrawLine(renderer, 0, sb_h - 1, canvas_w, sb_h - 1)
 
-    # Clock text (center) — uses hardware.clock directly
-    t = int(time.time())
-    if t % 10 < 5:
-        clock_str = hwclock.format_time()
-    else:
-        clock_str = "Now Playing" if audio.is_audio_active() else "iPod"
-
-    tex, tw, th = assets.render_text(clock_str, text_color)
+    # Title text (center)
+    tex, tw, th = assets.render_text(title, text_color)
     if tex:
         tw, th = int(tw), int(th)
         cx = (canvas_w - tw) // 2
@@ -78,7 +74,7 @@ def render_status_bar(renderer, assets, theme):
         sdl2.SDL_RenderCopy(renderer, tex, None, dst)
         sdl2.SDL_DestroyTexture(tex)
 
-    # Battery sprite (right side) — uses hardware.battery directly
+    # Battery sprite (right side)
     try:
         btex, bfw, bfh, bframes = assets.get_sprite("battery")
         if btex:
@@ -95,19 +91,23 @@ def render_status_bar(renderer, assets, theme):
     except Exception:
         pass
 
-    # Playmode / disk sprite (left side) — uses hardware.disk/audio directly
+    # Playmode / disk sprite (left side)
     try:
-        if disk.is_disk_active():
-            dtex, dfw, dfh, dframes = assets.get_sprite("disk")
+        play_state = audio.get_play_state()
+        if play_state == "STOPPED":
+            # No icon when nothing is playing — clean and realistic
+            pass
+        elif disk.is_disk_active():
+            # Static disk icon during actual disk access (no animation)
+            dtex, dfw, dfh, _ = assets.get_sprite("disk")
             if dtex:
-                frame = int(time.time() * 10) % dframes
-                src = sdl2.SDL_Rect(0, frame * dfh, dfw, dfh)
                 dst = sdl2.SDL_Rect(3, 2, dfw, dfh)
-                sdl2.SDL_RenderCopy(renderer, dtex, src, dst)
+                sdl2.SDL_RenderCopy(renderer, dtex, None, dst)
         else:
+            # Playmode icon based on current state
             ptex, pfw, pfh, pframes = assets.get_sprite("playmode")
             if ptex:
-                frame = {"PLAYING": 0, "PAUSED": 1, "FF": 2, "REW": 3}.get(audio.get_play_state(), 0)
+                frame = {"PLAYING": 0, "PAUSED": 1, "FF": 2, "REW": 3}.get(play_state, 0)
                 src = sdl2.SDL_Rect(0, frame * pfh, pfw, pfh)
                 dst = sdl2.SDL_Rect(4, 5, pfw, pfh)
                 sdl2.SDL_RenderCopy(renderer, ptex, src, dst)
@@ -141,6 +141,10 @@ def main():
     assets = AssetManager(renderer, theme, THEME_DIR, scale)
 
     colors = theme["colors"]
+    bg_rgb = hex_rgb(colors["background"])
+    sb_h = theme.get("statusbar", {}).get("height", 22)
+    content_vp = (0, sb_h, cw, ch - sb_h)
+
     menu_style = {
         "row_height": 18,
         "text_color": hex_rgb(colors["foreground"]),
@@ -150,27 +154,121 @@ def main():
         "selector_text_color": hex_rgb(colors["selector_text"]),
         "secondary_text_color": hex_rgb(colors.get("secondary_text", "999999")),
     }
-    vp = theme["menu_viewport"]
-    vp_tuple = (vp["x"], vp["y"], vp["w"], vp["h"])
 
     input_stub = KeyboardInputStub()
-
     running = [True]
 
-    # Screen manager handles full-screen leaf views
-    screen_manager = ScreenManager()
+    # Animation system
+    animator = Animator(renderer, cw, ch, bg_color=bg_rgb)
+
+    # ── Render helpers for animation capture (full-canvas textures) ────
+
+    def _capture_menu():
+        """Render the current menu state (full canvas with status bar)."""
+        title = menu.stack[-1].title if menu.stack else ""
+        sdl2.SDL_SetRenderDrawColor(renderer, *bg_rgb, 255)
+        sdl2.SDL_RenderClear(renderer)
+        render_status_bar(renderer, assets, theme, title)
+        MenuRenderer(renderer, assets, menu_style, content_vp).render(menu)
+
+    def _capture_screen():
+        """Render the current screen state (full canvas with status bar)."""
+        sdl2.SDL_SetRenderDrawColor(renderer, *bg_rgb, 255)
+        sdl2.SDL_RenderClear(renderer)
+        render_status_bar(renderer, assets, theme, screen_manager.title)
+        screen_manager.render(renderer, assets, theme, content_vp, dt)
+
+    # ── Main render function ──────────────────────────────────────────
+
+    def render():
+        if animator.active:
+            return animator.render(dt)
+
+        sdl2.SDL_SetRenderDrawColor(renderer, *bg_rgb, 255)
+        sdl2.SDL_RenderClear(renderer)
+
+        # Status bar with title
+        if screen_manager.active:
+            current_title = screen_manager.title
+        else:
+            current_title = menu.stack[-1].title if menu.stack else ""
+        render_status_bar(renderer, assets, theme, current_title)
+
+        # Content below status bar
+        if screen_manager.active:
+            screen_manager.render(renderer, assets, theme, content_vp, dt)
+        else:
+            MenuRenderer(renderer, assets, menu_style, content_vp).render(menu)
+
+    # ── Screen transitions ────────────────────────────────────────────
+
+    _menu_stack_depth = 0
+    _captured_screen_tex = None
+
+    def _on_screen_pre_close():
+        nonlocal _captured_screen_tex
+        tex = sdl2.SDL_CreateTexture(
+            renderer,
+            sdl2.SDL_PIXELFORMAT_RGBA8888,
+            sdl2.SDL_TEXTUREACCESS_TARGET,
+            cw, ch,
+        )
+        if tex:
+            sdl2.SDL_SetTextureBlendMode(tex, sdl2.SDL_BLENDMODE_BLEND)
+            sdl2.SDL_SetRenderTarget(renderer, tex)
+            _capture_screen()
+            sdl2.SDL_SetRenderTarget(renderer, None)
+            _captured_screen_tex = tex
+
+    def _on_screen_close():
+        nonlocal _menu_stack_depth, _captured_screen_tex
+        if _captured_screen_tex:
+            animator.start_pop_with_texture(_captured_screen_tex)
+            _captured_screen_tex = None
+        else:
+            animator.start_pop(_capture_screen)
+        while len(menu.stack) > _menu_stack_depth:
+            menu.stack.pop()
+        animator.capture_new(_capture_menu)
+        # Rebuild menu root so "Now Playing" reflects current state
+        menu.rebuild_root(build_main_menu(close_menu_fn=lambda: menu.go_to_root()))
+
+    screen_manager = ScreenManager(on_close=_on_screen_close, on_pre_close=_on_screen_pre_close)
 
     def close_menu_and_open_screen(screen_cls):
-        """Go to root menu and push a screen."""
-        menu.go_to_root()
+        nonlocal _menu_stack_depth
+        _menu_stack_depth = len(menu.stack)
+        animator.start_push(_capture_menu)
         screen_manager.open(screen_cls)
+        if hasattr(screen_manager._screen, 'set_animator'):
+            screen_manager._screen.set_animator(animator)
+        animator.capture_new(_capture_screen)
+        # Rebuild menu root so "Now Playing" appears when returning to menu
+        menu.rebuild_root(build_main_menu(close_menu_fn=lambda: menu.go_to_root()))
+
+    # ── Menu navigation callbacks ─────────────────────────────────────
+
+    def _on_menu_push():
+        animator.start_push(_capture_menu)
+
+    def _on_menu_push_done():
+        animator.capture_new(_capture_menu)
+
+    def _on_menu_pop():
+        animator.start_pop(_capture_menu)
+
+    def _on_menu_pop_done():
+        animator.capture_new(_capture_menu)
 
     menu = MenuController(
         build_main_menu(close_menu_fn=lambda: menu.go_to_root()),
-        root_title="Main Menu",
+        root_title="nuPod",
+        on_push=_on_menu_push,
+        on_pop=_on_menu_pop,
+        on_post_push=_on_menu_push_done,
+        on_post_pop=_on_menu_pop_done,
     )
 
-    bg_rgb = hex_rgb(colors["background"])
     last = time.perf_counter()
     event = sdl2.SDL_Event()
 
@@ -179,70 +277,61 @@ def main():
         dt = now - last
         last = now
 
-        # Process input
-        while sdl2.SDL_PollEvent(event):
-            if event.type == sdl2.SDL_QUIT:
-                running[0] = False
-                continue
+        # Process input (skip during animation)
+        if not animator.active:
+            while sdl2.SDL_PollEvent(event):
+                if event.type == sdl2.SDL_QUIT:
+                    running[0] = False
+                    continue
 
-            inp = input_stub.poll(event)
-            if inp is None:
-                continue
+                inp = input_stub.poll(event)
+                if inp is None:
+                    continue
 
-            # ── Screen is active → delegate to screen ───────────────────
-            if screen_manager.active:
-                consumed = screen_manager.handle_input(inp)
-                # UP (Menu) button closes the screen if not consumed by the screen
-                if isinstance(inp, ButtonPress) and inp.button == Button.UP and not consumed:
-                    screen_manager.close()
-                continue
+                # ── Screen is active → delegate to screen ───────────────────
+                if screen_manager.active:
+                    consumed = screen_manager.handle_input(inp)
+                    if isinstance(inp, ButtonPress) and inp.button == Button.UP and not consumed:
+                        screen_manager.close()
+                    continue
 
-            # ── Menu is active → handle input ────────────────────────────
-            if isinstance(inp, ScrollEvent):
-                menu.handle(inp)
-                continue
+                # ── Menu is active → handle input ────────────────────────────
+                if isinstance(inp, ScrollEvent):
+                    menu.handle(inp)
+                    continue
 
-            if isinstance(inp, ButtonPress):
-                btn = inp.button
+                if isinstance(inp, ButtonPress):
+                    btn = inp.button
 
-                # CENTER on a "screen" item → open full-screen view
-                if btn == Button.CENTER:
-                    screen_cls = menu.get_selected_screen_cls()
-                    if screen_cls:
-                        close_menu_and_open_screen(screen_cls)
+                    if btn == Button.CENTER:
+                        screen_cls = menu.get_selected_screen_cls()
+                        if screen_cls:
+                            close_menu_and_open_screen(screen_cls)
+                            continue
+                        menu.handle(inp)
                         continue
+
+                    if btn == Button.UP:
+                        menu.handle(inp)
+                        continue
+
+                    if btn == Button.LEFT:
+                        menu.handle(inp)
+                        continue
+
+                    if btn == Button.DOWN:
+                        # DOWN (Play/Pause) only works in the Now Playing screen.
+                        # At the menu level, pass through to the menu handler
+                        # (does nothing unless in adjust mode).
+                        menu.handle(inp)
+                        continue
+
+                    if btn == Button.RIGHT:
+                        if audio.is_audio_active():
+                            audio.set_elapsed_sec(0.0)
+                        continue
+
                     menu.handle(inp)
-                    continue
-
-                # UP (Menu) button → menu handles (short=back one, long=root)
-                if btn == Button.UP:
-                    menu.handle(inp)
-                    continue
-
-                # LEFT (Rewind / adjust left) → menu handles in adjust mode
-                if btn == Button.LEFT:
-                    menu.handle(inp)
-                    continue
-
-                # DOWN (Play/Pause) button → toggle playback
-                if btn == Button.DOWN:
-                    ps = audio.get_play_state()
-                    if ps == "PLAYING":
-                        audio.set_play_state("PAUSED")
-                    elif ps == "PAUSED":
-                        audio.set_play_state("PLAYING")
-                    else:
-                        audio.set_play_state("PLAYING")
-                    continue
-
-                # RIGHT (Forward) button → skip track
-                if btn == Button.RIGHT:
-                    if audio.is_audio_active():
-                        audio.set_elapsed_sec(0.0)
-                    continue
-
-                # Everything else → menu
-                menu.handle(inp)
 
         # Update all hardware stubs
         battery.tick_stub(dt)
@@ -256,18 +345,7 @@ def main():
         hwinput.tick_stub(dt)
 
         # Render
-        sdl2.SDL_SetRenderDrawColor(renderer, *bg_rgb, 255)
-        sdl2.SDL_RenderClear(renderer)
-
-        if screen_manager.active:
-            # Full-screen view (no menu)
-            screen_manager.render(renderer, assets, theme, (0, 0, cw, ch))
-        else:
-            # Status bar always visible when menu is showing
-            render_status_bar(renderer, assets, theme)
-            # Menu overlay in viewport
-            menu_renderer = MenuRenderer(renderer, assets, menu_style, vp_tuple)
-            menu_renderer.render(menu)
+        render()
 
         sdl2.SDL_RenderPresent(renderer)
         sdl2.SDL_Delay(16)

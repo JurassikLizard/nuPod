@@ -1,6 +1,6 @@
 {
-  "canvas": { "width": 220, "height": 176 },
-  "window": { "width": 220, "height": 176 },
+  "canvas": { "width": 160, "height": 128 },
+  "window": { "width": 160, "height": 128 },
   "assets_root": "assets",
   "colors": {
     "foreground": "000000",
@@ -11,7 +11,7 @@
     "secondary_text": "999999",
     "statusbar_text": "000000"
   },
-  "menu_viewport": { "x": 0, "y": 22, "w": 220, "h": 154 },
+  "menu_viewport": { "x": 0, "y": 22, "w": 160, "h": 128 },
   "statusbar": { "height": 22 },
   "font": { "path": "assets/font/Chicago.ttf", "size": 10 },
   "font_large": { "path": "assets/font/Chicago.ttf", "size": 24 },

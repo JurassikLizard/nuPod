@@ -174,19 +174,16 @@ class MenuController:
 
         btn = event.button
 
-        # ── UP (Menu) button: short = back one, long = root ────────────
+        # ── UP (Menu) button: back one level (or exit adjust mode) ─────
         if btn == Button.UP:
-            if event.long_press:
-                self.go_to_root()
-            else:
-                if screen.adjust_mode:
-                    screen.adjust_mode = False
-                elif len(self.stack) > 1:
-                    if self._on_pop:
-                        self._on_pop()
-                    self.stack.pop()
-                    if self._on_post_pop:
-                        self._on_post_pop()
+            if screen.adjust_mode:
+                screen.adjust_mode = False
+            elif len(self.stack) > 1:
+                if self._on_pop:
+                    self._on_pop()
+                self.stack.pop()
+                if self._on_post_pop:
+                    self._on_post_pop()
             return
 
         # ── LEFT (Rewind / adjust left) ─────────────────────────────────
@@ -281,8 +278,7 @@ class MenuRenderer:
         screen = controller.stack[-1]
 
         sdl2.SDL_RenderSetClipRect(self.renderer, sdl2.SDL_Rect(self.vx, self.vy, self.vw, self.vh))
-        sdl2.SDL_SetRenderDrawColor(self.renderer, *self.bg_color, 255)
-        sdl2.SDL_RenderFillRect(self.renderer, sdl2.SDL_Rect(self.vx, self.vy, self.vw, self.vh))
+        # No background fill — the backdrop is rendered in main.py
 
         visible_rows = max(1, self.vh // self.row_h)
         self._update_scroll(screen, visible_rows)

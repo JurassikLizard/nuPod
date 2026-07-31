@@ -14,9 +14,6 @@ from .screens.placeholder import PlaceholderScreen
 from .screens.playlists import PlaylistsScreen
 from .screens.artists import ArtistsScreen
 from .screens.albums import AlbumsScreen
-from .screens.genres import GenresScreen
-from .screens.composers import ComposersScreen
-from .screens.audiobooks import AudiobooksScreen
 from .screens.contacts import ContactsScreen
 from .screens.calendar import CalendarScreen
 from .screens.notes import NotesScreen
@@ -45,9 +42,6 @@ def build_main_menu(close_menu_fn, quit_fn=None):
         screen_item("Artists", ArtistsScreen),
         screen_item("Albums", AlbumsScreen),
         screen_item("Songs", SongsScreen),
-        screen_item("Genres", GenresScreen),
-        screen_item("Composers", ComposersScreen),
-        screen_item("Audiobooks", AudiobooksScreen),
     ])
 
     # ---- Extras submenu ----------------------------------------------------

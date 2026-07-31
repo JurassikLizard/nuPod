@@ -11,12 +11,13 @@
     "secondary_text": "999999",
     "statusbar_text": "000000"
   },
-  "menu_viewport": { "x": 0, "y": 22, "w": 160, "h": 128 },
-  "statusbar": { "height": 22 },
+  "menu_viewport": { "x": 0, "y": 20, "w": 160, "h": 128 },
+  "statusbar": { "height": 20 },
   "font": { "path": "assets/font/Chicago.ttf", "size": 10 },
   "font_large": { "path": "assets/font/Chicago.ttf", "size": 24 },
   "images": {
     "backdrop":     { "path": "Backdrop.bmp" },
+    "backdrop_play": { "path": "BackdropPlay.bmp" },
     "aa_bottom":    { "path": "AA Bottom.bmp" },
     "aa_left":      { "path": "AA Left.bmp" },
     "aa_right":     { "path": "AA Right.bmp" },

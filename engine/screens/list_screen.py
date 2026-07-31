@@ -166,10 +166,7 @@ class ListScreen(Screen):
 
         vx, vy, vw, vh = viewport
 
-        # Background
-        bg = self._hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))
-        sdl2.SDL_SetRenderDrawColor(renderer, *bg, 255)
-        sdl2.SDL_RenderFillRect(renderer, sdl2.SDL_Rect(vx, vy, vw, vh))
+        # No background fill — the backdrop is rendered in main.py
 
         text_color = self._hex_rgb(theme.get("colors", {}).get("foreground", "000000"))
         sel_color = self._hex_rgb(theme.get("colors", {}).get("selector_text", "FFFFFF"))

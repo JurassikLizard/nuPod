@@ -2,10 +2,18 @@
 
 A modern, spotify-capable, Wi-Fi and Bluetooth enabled MP3 iPod upgrade.
 
-```
+```bash
 sudo apt install ffmpeg
+sudo apt install libmpv-dev
 pip3 install requirements.txt
 ```
+
+```bash
+python -m pip install git+https://github.com/Googolplexed0/zotify.git
+
+```
+
+TODO: Fix goofy volume system
 
 ```
 Main Menu

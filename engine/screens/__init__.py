@@ -56,9 +56,6 @@ from .placeholder import PlaceholderScreen
 from .playlists import PlaylistsScreen
 from .artists import ArtistsScreen
 from .albums import AlbumsScreen
-from .genres import GenresScreen
-from .composers import ComposersScreen
-from .audiobooks import AudiobooksScreen
 from .contacts import ContactsScreen
 from .calendar import CalendarScreen
 from .notes import NotesScreen
@@ -72,8 +69,7 @@ __all__ = [
     "Screen", "ListScreen",
     "ClockScreen", "AboutScreen", "NowPlayingScreen", "SongsScreen",
     "PlaceholderScreen",
-    "PlaylistsScreen", "ArtistsScreen", "AlbumsScreen", "GenresScreen",
-    "ComposersScreen", "AudiobooksScreen",
+    "PlaylistsScreen", "ArtistsScreen", "AlbumsScreen",
     "ContactsScreen", "CalendarScreen", "NotesScreen", "GamesScreen",
     "EQScreen",
 ]

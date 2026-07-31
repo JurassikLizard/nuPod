@@ -1,7 +1,11 @@
 """
 Volume hardware interface.
+
+Controls both the in-app volume level and the system output volume
+via PulseAudio (``pactl``) so changes take effect in real-time.
 """
 
+import subprocess
 from dataclasses import dataclass
 
 
@@ -15,6 +19,17 @@ class _VolumeStub:
 _IMPL = _VolumeStub()
 
 
+def _apply_system_volume(pct: float) -> None:
+    """Set the system audio sink volume to *pct* (0-100)."""
+    try:
+        subprocess.run(
+            ["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{int(pct)}%"],
+            capture_output=True, timeout=5,
+        )
+    except Exception:
+        pass  # no PulseAudio — just track the value
+
+
 # ---- public API ------------------------------------------------------------
 
 def get_volume_percent() -> float:
@@ -23,6 +38,7 @@ def get_volume_percent() -> float:
 
 def set_volume_percent(pct: float) -> None:
     _IMPL.percent = max(0.0, min(float(_IMPL.limit), pct))
+    _apply_system_volume(_IMPL.percent)
 
 
 def get_volume_limit() -> int:
@@ -40,8 +56,13 @@ def is_volume_mode_active() -> bool:
 
 
 def trigger_volume_change() -> None:
-    """Start the volume-change display timer."""
-    _IMPL.change_timer = 1.5
+    """Start the volume-change display timer (3-second auto-hide)."""
+    _IMPL.change_timer = 3.0
+
+
+def clear_volume_mode() -> None:
+    """Immediately hide the volume bar."""
+    _IMPL.change_timer = 0.0
 
 
 def _get_change_timer() -> float:

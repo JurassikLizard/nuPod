@@ -18,7 +18,7 @@ from engine.assets import AssetManager
 from engine.input import KeyboardInputStub, ButtonPress, ScrollEvent, Button
 from engine.menu import MenuController, MenuRenderer
 from engine.screen_manager import ScreenManager
-from engine.menus import build_main_menu
+from engine.menu_tree import build_main_menu
 from engine.animator import Animator
 from engine.screens.now_playing import NowPlayingScreen
 
@@ -46,24 +46,20 @@ def hex_rgb(h):
     return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
 
 
+# The status-bar icon sprites carry a few blank rows, so centering on the
+# full frame height pushes their visible glyphs below the 20px title bar.
+# Negative padding pulls them up, leaving that blank space above the bar.
+STATUSBAR_ICON_VPAD = -2
+
+
 def render_status_bar(renderer, assets, theme, title):
     """Draw the iPod classic status bar: title (center), battery (right),
-    playmode/disk (left)."""
+    playmode/disk (left).  No background fill — the backdrop has it baked in."""
     sb = theme.get("statusbar", {})
-    sb_h = sb.get("height", 22)
+    sb_h = sb.get("height", 20)
     canvas_w = theme["canvas"]["width"]
 
     text_color = hex_rgb(theme.get("colors", {}).get("statusbar_text", "000000"))
-
-    # Bar background
-    bg = hex_rgb(theme.get("colors", {}).get("background", "FFFFFF"))
-    sdl2.SDL_SetRenderDrawColor(renderer, *bg, 255)
-    sdl2.SDL_RenderFillRect(renderer, sdl2.SDL_Rect(0, 0, canvas_w, sb_h))
-
-    # Bottom border line of status bar
-    border_color = hex_rgb(theme.get("colors", {}).get("secondary_text", "CCCCCC"))
-    sdl2.SDL_SetRenderDrawColor(renderer, *border_color, 200)
-    sdl2.SDL_RenderDrawLine(renderer, 0, sb_h - 1, canvas_w, sb_h - 1)
 
     # Title text (center)
     tex, tw, th = assets.render_text(title, text_color)
@@ -86,7 +82,7 @@ def render_status_bar(renderer, assets, theme, title):
                 frame = 3 + min(21, int(battery.get_battery_percent() / 100 * 22))
             frame = max(0, min(bframes - 1, frame))
             src = sdl2.SDL_Rect(0, frame * bfh, bfw, bfh)
-            dst = sdl2.SDL_Rect(canvas_w - bfw - 2, 4, bfw, bfh)
+            dst = sdl2.SDL_Rect(canvas_w - bfw - 2, (sb_h - bfh) // 2 + STATUSBAR_ICON_VPAD, bfw, bfh)
             sdl2.SDL_RenderCopy(renderer, btex, src, dst)
     except Exception:
         pass
@@ -101,7 +97,7 @@ def render_status_bar(renderer, assets, theme, title):
             # Static disk icon during actual disk access (no animation)
             dtex, dfw, dfh, _ = assets.get_sprite("disk")
             if dtex:
-                dst = sdl2.SDL_Rect(3, 2, dfw, dfh)
+                dst = sdl2.SDL_Rect(3, (sb_h - dfh) // 2 + STATUSBAR_ICON_VPAD, dfw, dfh)
                 sdl2.SDL_RenderCopy(renderer, dtex, None, dst)
         else:
             # Playmode icon based on current state
@@ -109,8 +105,17 @@ def render_status_bar(renderer, assets, theme, title):
             if ptex:
                 frame = {"PLAYING": 0, "PAUSED": 1, "FF": 2, "REW": 3}.get(play_state, 0)
                 src = sdl2.SDL_Rect(0, frame * pfh, pfw, pfh)
-                dst = sdl2.SDL_Rect(4, 5, pfw, pfh)
+                dst = sdl2.SDL_Rect(4, (sb_h - pfh) // 2 + STATUSBAR_ICON_VPAD, pfw, pfh)
                 sdl2.SDL_RenderCopy(renderer, ptex, src, dst)
+
+                # "L" indicator for local mode, to the right of the playmode icon
+                if audio.is_local():
+                    ltex, lw, lh = assets.render_text("L", text_color)
+                    if ltex:
+                        lx = 4 + pfw + 2
+                        ldst = sdl2.SDL_Rect(lx, (sb_h - lh) // 2 + STATUSBAR_ICON_VPAD, lw, lh)
+                        sdl2.SDL_RenderCopy(renderer, ltex, None, ldst)
+                        sdl2.SDL_DestroyTexture(ltex)
     except Exception:
         pass
 
@@ -142,7 +147,7 @@ def main():
 
     colors = theme["colors"]
     bg_rgb = hex_rgb(colors["background"])
-    sb_h = theme.get("statusbar", {}).get("height", 22)
+    sb_h = theme.get("statusbar", {}).get("height", 20)
     content_vp = (0, sb_h, cw, ch - sb_h)
 
     menu_style = {
@@ -164,19 +169,31 @@ def main():
     # ── Render helpers for animation capture (full-canvas textures) ────
 
     def _capture_menu():
-        """Render the current menu state (full canvas with status bar)."""
+        """Render the current menu state (full canvas with status bar + backdrop)."""
         title = menu.stack[-1].title if menu.stack else ""
-        sdl2.SDL_SetRenderDrawColor(renderer, *bg_rgb, 255)
-        sdl2.SDL_RenderClear(renderer)
+        btex, bw, bh = assets.get_texture("backdrop")
+        if btex:
+            sdl2.SDL_RenderCopy(renderer, btex, None, sdl2.SDL_Rect(0, 0, 160, 128))
+        else:
+            sdl2.SDL_SetRenderDrawColor(renderer, *bg_rgb, 255)
+            sdl2.SDL_RenderClear(renderer)
         render_status_bar(renderer, assets, theme, title)
         MenuRenderer(renderer, assets, menu_style, content_vp).render(menu)
 
     def _capture_screen():
         """Render the current screen state (full canvas with status bar)."""
-        sdl2.SDL_SetRenderDrawColor(renderer, *bg_rgb, 255)
-        sdl2.SDL_RenderClear(renderer)
-        render_status_bar(renderer, assets, theme, screen_manager.title)
+        if screen_manager.active and isinstance(screen_manager._screen, NowPlayingScreen):
+            sdl2.SDL_SetRenderDrawColor(renderer, *bg_rgb, 255)
+            sdl2.SDL_RenderClear(renderer)
+        else:
+            btex, bw, bh = assets.get_texture("backdrop")
+            if btex:
+                sdl2.SDL_RenderCopy(renderer, btex, None, sdl2.SDL_Rect(0, 0, 160, 128))
+            else:
+                sdl2.SDL_SetRenderDrawColor(renderer, *bg_rgb, 255)
+                sdl2.SDL_RenderClear(renderer)
         screen_manager.render(renderer, assets, theme, content_vp, dt)
+        render_status_bar(renderer, assets, theme, screen_manager.title)
 
     # ── Main render function ──────────────────────────────────────────
 
@@ -184,20 +201,31 @@ def main():
         if animator.active:
             return animator.render(dt)
 
-        sdl2.SDL_SetRenderDrawColor(renderer, *bg_rgb, 255)
-        sdl2.SDL_RenderClear(renderer)
-
-        # Status bar with title
-        if screen_manager.active:
-            current_title = screen_manager.title
+        # Backdrop.bmp has the status bar background baked in.
+        # Render it for everything except the Now Playing screen
+        # (which uses BackdropPlay.bmp instead).
+        if screen_manager.active and isinstance(screen_manager._screen, NowPlayingScreen):
+            sdl2.SDL_SetRenderDrawColor(renderer, *bg_rgb, 255)
+            sdl2.SDL_RenderClear(renderer)
         else:
-            current_title = menu.stack[-1].title if menu.stack else ""
-        render_status_bar(renderer, assets, theme, current_title)
+            btex, bw, bh = assets.get_texture("backdrop")
+            if btex:
+                dst = sdl2.SDL_Rect(0, 0, 160, 128)
+                sdl2.SDL_RenderCopy(renderer, btex, None, dst)
+            else:
+                sdl2.SDL_SetRenderDrawColor(renderer, *bg_rgb, 255)
+                sdl2.SDL_RenderClear(renderer)
 
         # Content below status bar
         if screen_manager.active:
             screen_manager.render(renderer, assets, theme, content_vp, dt)
+            # Status bar on top — screens render their own backdrop which
+            # would otherwise cover the text/icons.
+            render_status_bar(renderer, assets, theme, screen_manager.title)
         else:
+            # For menus, backdrop has the status bar background baked in
+            current_title = menu.stack[-1].title if menu.stack else ""
+            render_status_bar(renderer, assets, theme, current_title)
             MenuRenderer(renderer, assets, menu_style, content_vp).render(menu)
 
     # ── Screen transitions ────────────────────────────────────────────

@@ -1,24 +1,30 @@
-# Core dependencies
-sdl2
-pysdl2
-pysdl2-dll
-python-mpv
-
-# Spotify integration
-spotipy
-librespot
-
-# Audio file handling
-mutagen
-pydub
-pyogg
-
-# Image handling
-Pillow
-
-# Audio processing
-ffmpy
-audioop-lts
-
-# Zotify (Spotify downloader)
-git+https://github.com/Googolplexed0/zotify.git
+audioop-lts==0.2.2
+certifi==2026.7.22
+charset-normalizer==3.4.9
+defusedxml==0.7.1
+ffmpy==1.0.0
+idna==3.18
+ifaddr==0.2.0
+librespot @ git+https://github.com/Googolplexed0/librespot-python.git@7a89401ba151897d04efc6e8476c8ed68d417b3e
+music-tag==0.4.3
+mutagen==1.48.1
+pillow==12.3.0
+pkce==1.0.3
+protobuf==3.20.1
+pwinput==1.0.3
+pycryptodomex==3.23.0
+pydub==0.25.1
+PyOgg==0.6.14a1
+PySDL2==0.9.17
+pysdl2-dll==2.32.10
+python-mpv==1.0.8
+redis==8.1.0
+requests==2.34.2
+spotipy==2.26.0
+tabulate==0.10.0
+tqdm==4.70.0
+urllib3==2.7.0
+wcwidth==0.8.2
+websocket-client==1.9.0
+zeroconf==0.150.0
+zotify @ git+https://github.com/Googolplexed0/zotify.git@9ea3210198e1ad9f3fc995cca046973ff77238e5

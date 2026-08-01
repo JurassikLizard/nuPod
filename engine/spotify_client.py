@@ -249,11 +249,16 @@ class SpotifyClient:
                 redirect_uri=self._redirect_uri,
                 scope=SCOPES,
                 cache_path=TOKEN_PATH,
-                open_browser=True,
+                open_browser=False,
             )
             token = self._auth_manager.get_cached_token()
             if token is None:
                 logger.info("No cached token — starting OAuth flow")
+                # Prints the authorization URL to the terminal and waits
+                # for the user to paste the redirect URL back.
+                print("\n" + "=" * 60)
+                print("  Spotify Authorization Required")
+                print("=" * 60)
                 token = self._auth_manager.get_access_token(as_dict=False)
                 if token is None:
                     logger.error("OAuth flow failed — no token returned")

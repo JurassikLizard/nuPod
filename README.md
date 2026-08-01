@@ -3,9 +3,9 @@
 A modern, spotify-capable, Wi-Fi and Bluetooth enabled MP3 iPod upgrade.
 
 ```bash
-sudo apt install ffmpeg
+# sudo apt install ffmpeg
 sudo apt install libmpv-dev
-pip3 install requirements.txt
+pip3 install -r requirements.txt
 ```
 
 ```bash

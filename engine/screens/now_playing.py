@@ -21,13 +21,18 @@ import tempfile
 
 from . import Screen, ButtonPress, ScrollEvent, Button
 from hardware import audio, volume, settings as hwsettings
+from engine.spotify_client import get_client as get_spotify_client
+from engine.spotify_connect import get_connect as get_spotify_connect
 import sdl2
 
 _COVER_CACHE = os.path.join(tempfile.gettempdir(), "nupod_covers")
 
 
 class NowPlayingScreen(Screen):
-    """Full-screen Now Playing display with album art, track info, progress bar."""
+    """Full-screen Now Playing display with album art, track info, progress bar.
+
+    Supports both local (mpv) and Spotify (API) modes.
+    """
 
     @property
     def title(self):
@@ -40,18 +45,54 @@ class NowPlayingScreen(Screen):
         self._scroll_offsets = {}
         self._scrub_mode = False
         self._scrub_pos = 0.0  # position in seconds during scrub mode
+        # Spotify mode state cache
+        self._spotify_playback = None
+        self._spotify_cover_path = None
 
-    @staticmethod
-    def _get_cover_path() -> str | None:
+    def _get_spotify_playback(self):
+        """Get current playback state from Spotify API, with caching."""
+        if not audio.is_spotify():
+            return None
+        client = get_spotify_client()
+        if client and client.is_authenticated():
+            playback = client.get_current_playback()
+            self._spotify_playback = playback
+            return playback
+        return self._spotify_playback
+
+    def _get_cover_path(self) -> str | None:
         """Return a path to cover art to display.
 
         Priority:
-          1. Embedded cover art extracted from the current audio file
-          2. Backup cover image from the library config
+          1. Spotify cover art URL (when in Spotify mode)
+          2. Embedded cover art extracted from the current audio file
+          3. Backup cover image from the library config
 
         Embedded art is extracted once and cached to a temp file so SDL
         can load it as a texture on subsequent frames.
         """
+        # Spotify mode: download cover art from URL
+        if audio.is_spotify():
+            playback = self._get_spotify_playback()
+            if playback and playback.get("album_cover_url"):
+                url = playback["album_cover_url"]
+                cache_key = url.split("/")[-1].split("?")[0]
+                cache_path = os.path.join(_COVER_CACHE, f"spotify_{cache_key}.jpg")
+                if os.path.exists(cache_path):
+                    return cache_path
+                try:
+                    import requests
+                    resp = requests.get(url, timeout=5)
+                    if resp.status_code == 200:
+                        os.makedirs(_COVER_CACHE, exist_ok=True)
+                        with open(cache_path, "wb") as f:
+                            f.write(resp.content)
+                        return cache_path
+                except Exception:
+                    pass
+            return self._spotify_cover_path
+
+        # Local mode: extract from file
         audio_file = audio.get_current_filepath()
         if audio_file and os.path.exists(audio_file):
             os.makedirs(_COVER_CACHE, exist_ok=True)
@@ -312,15 +353,36 @@ class NowPlayingScreen(Screen):
             if btn == Button.UP:
                 # If in scrub mode, seek before leaving
                 if self._scrub_mode:
-                    audio.seek_to(self._scrub_pos)
+                    if audio.is_spotify():
+                        client = get_spotify_client()
+                        if client:
+                            client.seek_track(int(self._scrub_pos * 1000))
+                    else:
+                        audio.seek_to(self._scrub_pos)
                 return "back"
 
             if btn == Button.DOWN:
                 if event.long_press:
+                    if audio.is_spotify():
+                        client = get_spotify_client()
+                        if client:
+                            client.pause_playback()
                     audio.stop()
                     return "back"
-                ps = audio.get_play_state()
-                audio.set_play_state("PAUSED" if ps == "PLAYING" else "PLAYING")
+                if audio.is_spotify():
+                    client = get_spotify_client()
+                    if client:
+                        playback = self._get_spotify_playback()
+                        if playback and playback.get("is_playing"):
+                            client.pause_playback()
+                        else:
+                            # Resume — need the device ID
+                            connect = get_spotify_connect()
+                            if connect and connect.is_running():
+                                client.transfer_playback(connect.get_device_id(), play=True)
+                else:
+                    ps = audio.get_play_state()
+                    audio.set_play_state("PAUSED" if ps == "PLAYING" else "PLAYING")
                 return True
 
             if btn == Button.CENTER:
@@ -330,7 +392,12 @@ class NowPlayingScreen(Screen):
 
                 if self._scrub_mode:
                     # Exit scrub mode → seek to chosen position
-                    audio.seek_to(self._scrub_pos)
+                    if audio.is_spotify():
+                        client = get_spotify_client()
+                        if client:
+                            client.seek_track(int(self._scrub_pos * 1000))
+                    else:
+                        audio.seek_to(self._scrub_pos)
                     self._scrub_mode = False
                 else:
                     # Enter scrub mode → capture current position
@@ -339,14 +406,41 @@ class NowPlayingScreen(Screen):
                 return True
 
             if btn == Button.LEFT:
-                audio.prev_track()
+                if audio.is_spotify():
+                    client = get_spotify_client()
+                    if client:
+                        client.previous_track()
+                else:
+                    audio.prev_track()
                 return True
             if btn == Button.RIGHT:
-                audio.next_track()
+                if audio.is_spotify():
+                    client = get_spotify_client()
+                    if client:
+                        client.next_track()
+                else:
+                    audio.next_track()
                 return True
         return False
 
     def render(self, renderer, assets, theme, viewport, dt=0.0):
+        # Sync Spotify metadata to audio module for consistent rendering
+        if audio.is_spotify():
+            playback = self._get_spotify_playback()
+            if playback:
+                audio.set_title(playback.get("track", ""))
+                audio.set_artist(playback.get("artist", ""))
+                audio.set_album(playback.get("album", ""))
+                if playback.get("duration_ms"):
+                    audio.set_track_length_sec(playback["duration_ms"] / 1000.0)
+                if playback.get("progress_ms"):
+                    audio.set_elapsed_sec(playback["progress_ms"] / 1000.0)
+                # Set play state based on Spotify
+                if playback.get("is_playing"):
+                    audio.set_play_state("PLAYING")
+                else:
+                    audio.set_play_state("PAUSED")
+
         # BackdropPlay.bmp covers the full canvas and already has the
         # status bar background and progress bar track baked in.
         btex, bw, bh = assets.get_texture("backdrop_play")

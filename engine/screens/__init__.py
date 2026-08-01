@@ -62,6 +62,14 @@ from .notes import NotesScreen
 from .games import GamesScreen
 from .eq import EQScreen
 
+# Spotify screens
+from .spotify import (
+    SpotifyPlaylistsScreen,
+    SpotifyAlbumsScreen,
+    SpotifyArtistsScreen,
+    SpotifySearchScreen,
+)
+
 # Re-export the shared list screen base class
 from .list_screen import ListScreen
 
@@ -72,4 +80,6 @@ __all__ = [
     "PlaylistsScreen", "ArtistsScreen", "AlbumsScreen",
     "ContactsScreen", "CalendarScreen", "NotesScreen", "GamesScreen",
     "EQScreen",
+    "SpotifyPlaylistsScreen", "SpotifyAlbumsScreen",
+    "SpotifyArtistsScreen", "SpotifySearchScreen",
 ]

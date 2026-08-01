@@ -19,6 +19,12 @@ from .screens.calendar import CalendarScreen
 from .screens.notes import NotesScreen
 from .screens.games import GamesScreen
 from .screens.eq import EQScreen
+from .screens.spotify import (
+    SpotifyPlaylistsScreen,
+    SpotifyAlbumsScreen,
+    SpotifyArtistsScreen,
+    SpotifySearchScreen,
+)
 from hardware import audio, display, volume, settings as hwsettings
 
 
@@ -42,6 +48,15 @@ def build_main_menu(close_menu_fn, quit_fn=None):
         screen_item("Artists", ArtistsScreen),
         screen_item("Albums", AlbumsScreen),
         screen_item("Songs", SongsScreen),
+    ])
+
+    # ---- Spotify submenu ----------------------------------------------------
+
+    spotify_sub = submenu("Spotify", [
+        screen_item("Playlists", SpotifyPlaylistsScreen),
+        screen_item("Albums", SpotifyAlbumsScreen),
+        screen_item("Artists", SpotifyArtistsScreen),
+        screen_item("Search", SpotifySearchScreen),
     ])
 
     # ---- Extras submenu ----------------------------------------------------
@@ -141,6 +156,7 @@ def build_main_menu(close_menu_fn, quit_fn=None):
         items.append(screen_item("Now Playing", NowPlayingScreen))
 
     items.append(music_sub)
+    items.append(spotify_sub)
     # items.append(browse_sub)
     items.append(extras_sub)
     items.append(settings_sub)

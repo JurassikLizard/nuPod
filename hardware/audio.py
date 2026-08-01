@@ -28,6 +28,7 @@ class _AudioState:
     queue: list = field(default_factory=list)
     queue_pos: int = 0
     local_mode: bool = False
+    spotify_mode: bool = False       # True when streaming from Spotify Connect
     _pending_next: bool = False  # set True when end-file fires
 
 
@@ -151,7 +152,7 @@ def is_near_end() -> bool:
 
 
 def is_audio_active() -> bool:
-    return _IMPL.play_state in ("PLAYING", "PAUSED")
+    return _IMPL.play_state in ("PLAYING", "PAUSED") or _IMPL.spotify_mode
 
 
 def set_volume(pct: float) -> None:
@@ -213,6 +214,28 @@ def is_local() -> bool:
 
 def set_local(v: bool) -> None:
     _IMPL.local_mode = v
+    if v:
+        _IMPL.spotify_mode = False
+
+
+def is_spotify() -> bool:
+    return _IMPL.spotify_mode
+
+
+def set_spotify_mode(v: bool) -> None:
+    """Switch to Spotify mode (mutually exclusive with local mode)."""
+    _IMPL.spotify_mode = v
+    if v:
+        _IMPL.local_mode = False
+        # Stop any local playback when switching to Spotify
+        if _IMPL.play_state in ("PLAYING", "PAUSED"):
+            if _player is not None:
+                try:
+                    _player.stop()
+                except Exception:
+                    pass
+            _IMPL.play_state = "STOPPED"
+            _IMPL.elapsed_sec = 0.0
 
 
 def get_queue_len() -> int:
@@ -235,6 +258,7 @@ def set_queue(songs: list) -> None:
     _IMPL.queue = list(songs)
     _IMPL.queue_pos = 0
     _IMPL.local_mode = True
+    _IMPL.spotify_mode = False
 
 
 def _apply_metadata(song: dict) -> None:

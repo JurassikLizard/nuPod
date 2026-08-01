@@ -21,6 +21,8 @@ from engine.screen_manager import ScreenManager
 from engine.menu_tree import build_main_menu
 from engine.animator import Animator
 from engine.screens.now_playing import NowPlayingScreen
+from engine.spotify_client import get_client as get_spotify_client
+from engine.spotify_connect import get_connect as get_spotify_connect
 
 # Hardware API — functional modules
 from hardware import battery
@@ -108,14 +110,19 @@ def render_status_bar(renderer, assets, theme, title):
                 dst = sdl2.SDL_Rect(4, (sb_h - pfh) // 2 + STATUSBAR_ICON_VPAD, pfw, pfh)
                 sdl2.SDL_RenderCopy(renderer, ptex, src, dst)
 
-                # "L" indicator for local mode, to the right of the playmode icon
+                # Mode indicator: "L" for local, "S" for Spotify
+                mode_char = None
                 if audio.is_local():
-                    ltex, lw, lh = assets.render_text("L", text_color)
-                    if ltex:
-                        lx = 4 + pfw + 2
-                        ldst = sdl2.SDL_Rect(lx, (sb_h - lh) // 2 + STATUSBAR_ICON_VPAD, lw, lh)
-                        sdl2.SDL_RenderCopy(renderer, ltex, None, ldst)
-                        sdl2.SDL_DestroyTexture(ltex)
+                    mode_char = "L"
+                elif audio.is_spotify():
+                    mode_char = "S"
+                if mode_char:
+                    mtex, mw, mh = assets.render_text(mode_char, text_color)
+                    if mtex:
+                        mx = 4 + pfw + 2
+                        mdst = sdl2.SDL_Rect(mx, (sb_h - mh) // 2 + STATUSBAR_ICON_VPAD, mw, mh)
+                        sdl2.SDL_RenderCopy(renderer, mtex, None, mdst)
+                        sdl2.SDL_DestroyTexture(mtex)
     except Exception:
         pass
 
@@ -162,6 +169,30 @@ def main():
 
     input_stub = KeyboardInputStub()
     running = [True]
+
+    # Spotify initialization
+    try:
+        sc = get_spotify_client()
+        if sc.authenticate():
+            print(f"[spotify] Authenticated as {sc.get_username()}")
+            # Start Spotify Connect receiver in background (optional)
+            try:
+                connect = get_spotify_connect()
+                ok = connect.start()
+                if ok:
+                    print(f"[spotify] Connect receiver: {connect.get_device_name()}")
+                else:
+                    err = connect.get_error()
+                    if err:
+                        print(f"[spotify] Connect receiver: {err}")
+                    else:
+                        print("[spotify] Connect receiver: starting (auth may be needed)")
+            except Exception as ce:
+                print(f"[spotify] Connect receiver: {ce}")
+        else:
+            print("[spotify] Not authenticated — set SPOTIPY_CLIENT_ID/SPOTIPY_CLIENT_SECRET")
+    except Exception as e:
+        print(f"[spotify] Init error: {e}")
 
     # Animation system
     animator = Animator(renderer, cw, ch, bg_color=bg_rgb)

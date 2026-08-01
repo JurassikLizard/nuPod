@@ -1,0 +1,24 @@
+# Core dependencies
+sdl2
+pysdl2
+pysdl2-dll
+python-mpv
+
+# Spotify integration
+spotipy
+librespot
+
+# Audio file handling
+mutagen
+pydub
+pyogg
+
+# Image handling
+Pillow
+
+# Audio processing
+ffmpy
+audioop-lts
+
+# Zotify (Spotify downloader)
+git+https://github.com/Googolplexed0/zotify.git
